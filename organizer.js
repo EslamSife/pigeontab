@@ -43,6 +43,45 @@ export async function saveSettings({ rules, ...changes }) {
   if (unused.length) await chrome.storage.sync.remove(unused);
 }
 
+// Only the site name is kept, so a pasted "https://www.github.com/x" becomes "github.com".
+export function parseWords(text) {
+  return text
+    .split(",")
+    .map((word) => word.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").split(/[/:?#]/)[0])
+    .filter(Boolean);
+}
+
+export const RULES_FILE_FORMAT = "pigeontab-rules";
+const MAX_IMPORTED_RULES = 100;
+
+export function rulesToFile(rules) {
+  const plain = rules.map(({ name, color, keywords, matchTitle }) => ({ name, color, keywords, matchTitle: Boolean(matchTitle) }));
+  return JSON.stringify({ format: RULES_FILE_FORMAT, version: 1, rules: plain }, null, 2);
+}
+
+// A file from anywhere is checked field by field, so a broken or edited file cannot store bad rules.
+export function rulesFromFile(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("this file is not a rules file (it is not valid JSON)");
+  }
+  if (data?.format !== RULES_FILE_FORMAT || !Array.isArray(data.rules)) throw new Error("this file is not a Pigeontab rules file");
+  if (data.rules.length > MAX_IMPORTED_RULES) throw new Error(`the file has more than ${MAX_IMPORTED_RULES} rules`);
+  const rules = data.rules
+    .map((rule) => ({
+      id: crypto.randomUUID(),
+      name: typeof rule?.name === "string" ? rule.name.trim() : "",
+      color: COLORS.includes(rule?.color) ? rule.color : "grey",
+      keywords: Array.isArray(rule?.keywords) ? parseWords(rule.keywords.filter((word) => typeof word === "string").join(",")) : [],
+      matchTitle: rule?.matchTitle === true,
+    }))
+    .filter((rule) => rule.name || rule.keywords.length);
+  if (!rules.length) throw new Error("the file has no rules");
+  return rules;
+}
+
 // Unfinished rules (no name or no words) are kept in settings but not used.
 async function loadUsableRules() {
   const { rules } = await loadSettings();

@@ -1,22 +1,22 @@
 # Chrome Web Store Listing
 
-Copy and paste these into the Chrome Web Store Developer Dashboard. Upload the package from `dist/tab-organizer.zip` (build it with `cd tests && npm run pack`). The images in this folder are made by `cd tests && npm run store`.
+Copy and paste these into the Chrome Web Store Developer Dashboard. Upload the package from `dist/pigeontab.zip` (build it with `cd tests && npm run pack`). The images in this folder are made by `cd tests && npm run store`.
 
 ## Package tab
 
-Upload: `dist/tab-organizer.zip`
+Upload: `dist/pigeontab.zip`
 
 ## Store listing tab
 
 **Name and summary** come from `manifest.json`:
 
-- Name: `Tab Organizer`
+- Name: `Pigeontab: Tab Groups by Your Rules` (the short name `Pigeontab` shows in the toolbar)
 - Summary: `Groups your tabs by your own rules, like Work, Learning and Shopping.`
 
 **Description:**
 
 ```
-Tab Organizer groups your tabs by rules you write, like Work, Learning and Shopping. You decide when it runs, and every action can be undone.
+Pigeontab groups your tabs by rules you write, like Work, Learning and Shopping. You decide when it runs, and every action can be undone.
 
 WHAT IT DOES
 • Organize now: each tab goes to the group of the first rule that matches its site. Sites that match no rule are listed, and you can add them to a rule with one click.
@@ -26,14 +26,15 @@ WHAT IT DOES
 • Close duplicates: keeps one copy of each page across all windows.
 • Close a group, or first save it to Obsidian as a note with one link per tab.
 • Auto-group new pages (optional): new pages join their rule group after they load. Tabs already in a group are never moved.
+• Back up and restore your rules as a file, for a backup or another computer.
 • Undo for every action.
 • Shortcuts: Alt+Shift+O organizes, Alt+Shift+M merges windows.
 
 PRIVACY
-Tab Organizer reads only tab addresses and titles, never page content. It has no servers and sends nothing over the network. No analytics, no tracking.
+Pigeontab reads only tab addresses and titles, never page content. It has no servers and sends nothing over the network. No analytics, no tracking.
 
 OPEN SOURCE
-MIT license. Code, issues and known limits: https://github.com/EslamSife/tab-organizer
+MIT license. Code, issues and known limits: https://github.com/EslamSife/pigeontab
 ```
 
 - Category: Productivity, then the closest sub-category the dashboard offers (for example "Workflow & Planning" or "Tools").
@@ -41,8 +42,8 @@ MIT license. Code, issues and known limits: https://github.com/EslamSife/tab-org
 - Store icon: `icons/icon-128.png`
 - Screenshots (1280x800): `screenshot-1-organize.png`, `screenshot-2-rules.png`, `screenshot-3-obsidian.png`
 - Small promo tile (440x280): `promo-small-440x280.png`
-- Homepage URL: `https://github.com/EslamSife/tab-organizer`
-- Support URL: `https://github.com/EslamSife/tab-organizer/issues`
+- Homepage URL: `https://github.com/EslamSife/pigeontab`
+- Support URL: `https://github.com/EslamSife/pigeontab/issues`
 - Mature content: No
 
 ## Privacy tab
@@ -59,6 +60,8 @@ Organize the user's open tabs into tab groups based on rules the user writes, an
 - `tabGroups`: `Creates, names, recolors and moves tab groups so tabs are grouped by the user's rules, and joins groups with the same name when windows are merged.`
 - `storage`: `Saves the user's rules and settings (sync storage) and the record needed for Undo (session storage, cleared when Chrome closes).`
 
+No new permission was added in 3.9.0. The rules backup uses a normal file download and a file picker, which need no permission.
+
 **Remote code:** No, I am not using remote code.
 
 **Data usage:**
@@ -66,7 +69,7 @@ Organize the user's open tabs into tab groups based on rules the user writes, an
 - Tick **Web history** (the extension reads tab addresses and titles). Leave every other type unticked.
 - Tick all three certifications: not sold to third parties, not used for purposes unrelated to the single purpose, not used for creditworthiness or lending.
 
-**Privacy policy URL:** `https://github.com/EslamSife/tab-organizer/blob/main/PRIVACY.md`
+**Privacy policy URL:** `https://github.com/EslamSife/pigeontab/blob/main/PRIVACY.md`
 
 ## Distribution tab
 

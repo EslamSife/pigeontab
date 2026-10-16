@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Tab Organizer",
-  "version": "3.8.0",
+  "name": "Pigeontab: Tab Groups by Your Rules",
+  "short_name": "Pigeontab",
+  "version": "3.9.0",
   "description": "Groups your tabs by your own rules, like Work, Learning and Shopping.",
   "permissions": ["tabs", "tabGroups", "storage"],
   "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
@@ -9,8 +10,9 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "action": {
-    "default_title": "Tab Organizer",
+    "default_title": "Pigeontab",
     "default_icon": { "16": "icons/icon-16.png", "48": "icons/icon-48.png" },
     "default_popup": "popup.html"
   },

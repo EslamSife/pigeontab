@@ -1,4 +1,4 @@
-import { COLORS, loadSettings, restyleGroups, saveSettings } from "./organizer.js";
+import { COLORS, loadSettings, parseWords, restyleGroups, saveSettings } from "./organizer.js";
 
 const SAVE_DELAY_MS = 600;
 const UNDO_SECONDS = 10;
@@ -224,14 +224,6 @@ async function addSiteToRule(site, ruleId) {
 }
 
 
-// Only the site name is kept, so a pasted "https://www.github.com/x" becomes "github.com".
-function parseWords(text) {
-  return text
-    .split(",")
-    .map((word) => word.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").split(/[/:?#]/)[0])
-    .filter(Boolean);
-}
-
 function readRow(row) {
   return {
     id: row.dataset.id,
@@ -389,6 +381,7 @@ document.getElementById("add").addEventListener("click", () => {
   row.querySelector(".name").focus();
 });
 
+document.getElementById("rules-file").addEventListener("click", () => chrome.runtime.openOptionsPage());
 actionButtons.forEach((button) => button.addEventListener("click", () => runAction(button.dataset.action)));
 statusClose.addEventListener("click", clearStatus);
 vaultInput.addEventListener("input", saveObsidianSoon);

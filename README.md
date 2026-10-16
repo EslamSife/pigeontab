@@ -1,6 +1,6 @@
-# Tab Organizer
+# Pigeontab
 
-A Chrome extension that groups your tabs by your own rules, like Work, Learning and Shopping. It also merges windows, closes duplicate tabs, and can save a group of tabs as a note in your [Obsidian](https://obsidian.md) vault. Every action can be undone.
+Pigeontab (called Tab Organizer before version 3.9) is a Chrome extension that groups your tabs by your own rules, like Work, Learning and Shopping. It also merges windows, closes duplicate tabs, and can save a group of tabs as a note in your [Obsidian](https://obsidian.md) vault. Every action can be undone.
 
 ## Features
 
@@ -11,18 +11,19 @@ A Chrome extension that groups your tabs by your own rules, like Work, Learning 
 - **Close duplicates.** Keeps one copy of each page across all windows: the tab you are looking at, else a pinned copy, else a grouped copy, else the first one.
 - **Close a group, and save it to Obsidian.** Makes a note with one link per tab, then closes the group.
 - **Auto-group new pages (optional).** A new page that is not in a group goes to its rule group after it loads. Tabs already in a group are never moved.
+- **Back up and restore rules.** "Back up or restore rules..." in the popup opens a page that exports your rules to a file and imports them again, for a backup or another computer. An import can be undone.
 - **Undo** for every action. Shortcut actions can be undone from the popup within 1 minute.
 - **Shortcuts:** `Alt+Shift+O` organizes, `Alt+Shift+M` merges windows. Change them at `chrome://extensions/shortcuts`.
 
 ## Install
 
-Tab Organizer works in Chrome on Windows, macOS and Linux. It is not in the Chrome Web Store yet. To install it from this folder:
+Pigeontab works in Chrome on Windows, macOS and Linux. It is waiting for Chrome Web Store review. Until then, install it from this folder:
 
 1. Download or clone this repository.
 2. Open `chrome://extensions` and turn on **Developer mode** (top right).
 3. Click **Load unpacked** and pick the repository folder.
 
-To update, pull the new code and click the reload icon on the Tab Organizer card.
+To update, pull the new code and click the reload icon on the Pigeontab card.
 
 ## Save to Obsidian
 
@@ -32,7 +33,7 @@ The note is sent with an `obsidian://` link, so Obsidian must be installed. Chro
 
 ## Privacy
 
-Tab Organizer reads only the address and title of your tabs. It never reads page content and never sends anything over the network. Your rules are kept in Chrome sync storage (they follow your Google account if Chrome sync is on). The Undo record is kept in memory and is cleared when Chrome restarts.
+Pigeontab reads only the address and title of your tabs. It never reads page content and never sends anything over the network. Your rules are kept in Chrome sync storage (they follow your Google account if Chrome sync is on). The Undo record is kept in memory and is cleared when Chrome restarts.
 
 Permissions: `tabs` (read tab addresses and titles), `tabGroups` (make and change groups), `storage` (keep your rules).
 
@@ -60,10 +61,22 @@ cd tests
 npm install
 npm run browser   # downloads the Chromium build Playwright needs, once
 npm test          # set HEADED=1 to watch the browser
-npm run pack      # builds dist/tab-organizer.zip with only the extension files
+npm run pack      # builds dist/pigeontab.zip with only the extension files
 ```
 
 A failed check prints `FAIL` and makes `npm test` exit with code 1. GitHub Actions runs the same tests on Windows, macOS and Linux on every push (`.github/workflows/test.yml`).
+
+## Check that the store version matches this code
+
+Extensions can be sold or hacked, and then get an update that is not in their public code. To let you check this one, every version tag (like `v3.9.0`) makes GitHub Actions build the ZIP and publish it on the [Releases](../../releases) page with `SHA256SUMS.txt`. That file has a SHA-256 checksum (a fingerprint that changes if one byte changes) for each file.
+
+To compare, open the folder where Chrome installed the extension. On macOS it is `~/Library/Application Support/Google/Chrome/Default/Extensions/phjfbhpdiffncplhmpmbfdjhbdcijogg/<version>_0`. On Windows and Linux it is in the same place under your Chrome profile folder. Put `SHA256SUMS.txt` there and run:
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+Every file should say `OK`. Two lines are expected to differ: the ZIP itself (it is not in that folder), and `manifest.json`, because the store adds lines to it, such as `update_url`.
 
 ## License
 

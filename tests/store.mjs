@@ -50,7 +50,7 @@ for (const shot of SHOTS) {
   await art.screenshot({ path: STORE + shot.file });
 }
 await art.setViewportSize({ width: 440, height: 280 });
-await art.setContent(page(`<div class="stage" style="height:280px;gap:24px;padding:0 32px"><img src="data:image/png;base64,${icon}" width="112"><div><h1 style="font-size:34px;margin:0 0 10px">Tab Organizer</h1><p style="font-size:18px;margin:0">Your tabs, grouped by your own rules.</p></div></div>`));
+await art.setContent(page(`<div class="stage" style="height:280px;gap:24px;padding:0 32px"><img src="data:image/png;base64,${icon}" width="112"><div><h1 style="font-size:34px;margin:0 0 10px">Pigeontab</h1><p style="font-size:18px;margin:0">Your tabs, grouped by your own rules.</p></div></div>`));
 await art.screenshot({ path: STORE + "promo-small-440x280.png" });
 await ctx.close();
 console.log(`Store images written to ${STORE}`);

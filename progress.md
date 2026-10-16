@@ -1,14 +1,14 @@
-# Tab Organizer: Progress
+# Pigeontab: Progress
 
-Last update: 2026-10-16. Current version: 3.8.0.
+Last update: 2026-10-17. Current version: 3.9.0 (3.8.0 is in Chrome Web Store review).
 
-Tab Organizer is a Chrome extension (a small add-on program that runs inside Chrome). It groups your tabs by your own rules, merges windows, closes duplicate tabs, and can save a group of tabs as a note in your Obsidian vault. Every action can be undone.
+Pigeontab (called Tab Organizer before 3.9.0) is a Chrome extension (a small add-on program that runs inside Chrome). It groups your tabs by your own rules, merges windows, closes duplicate tabs, and can save a group of tabs as a note in your Obsidian vault. Every action can be undone.
 
 ## How to install or update
 
 1. Open `chrome://extensions` and turn on "Developer mode" (top right).
 2. First time: click "Load unpacked" and pick the `tab-organizer` folder.
-3. After any code change: click the reload icon on the Tab Organizer card.
+3. After any code change: click the reload icon on the Pigeontab card. The local folder is still called `tab-organizer`; only the name and the GitHub repo changed.
 
 ## Files
 
@@ -23,6 +23,9 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 | `README.md`, `LICENSE` | The public description and the MIT license. |
 | `.github/workflows/test.yml` | GitHub Actions: runs the tests and builds the ZIP on every push. |
 | `popup.html`, `popup.css`, `popup.js` | The window you see when you click the extension icon. |
+| `options.html`, `options.js` | The "Back up or restore rules" page: exports the rules to a file and imports them again, with Undo. |
+| `.github/workflows/release.yml` | GitHub Actions: on a version tag, builds the ZIP and publishes it with SHA-256 checksums on the Releases page. |
+| `PRIVACY.md`, `store/` | The privacy policy, and the store text and images. |
 | `tests/` | The Playwright test suites. See "Tests" below for how to run them. |
 
 ## What it can do today
@@ -60,6 +63,7 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 11. **Join same-name groups in one window (version 3.7.0).** Merge in 3.6.0 only joined groups coming from other windows. Now it also joins same-name groups that were already in the current window.
 12. **Open source readiness (version 3.8.0).** A full review checked if the project can be published. The report is in the vault: `00_Inbox/tab-organizer-open-source-readiness-review.md`. This step fixed its findings: MIT license, README, icons, a ZIP build, GitHub Actions, tests that run headless on any machine and fail on a failed check, and the bugs in the 3.8.0 table. The git history now uses your personal email (set for this repo only).
 13. **Chrome Web Store package (version 3.8.0).** Added a privacy policy (`PRIVACY.md`, the store requires one even when data stays on the computer), store images made from the real popup (`store/`, rebuild with `cd tests && npm run store`), and the text for every dashboard field (`store/listing.md`). Submitted for review on 2026-10-17 (item ID phjfbhpdiffncplhmpmbfdjhbdcijogg), with the blue icon, 3 screenshots and the small promo tile. A new icon was tried and dropped; the blue icon stays.
+14. **Market research, new name, backups and verified builds (version 3.9.0).** Research (vault: `00_Inbox/tab-organizer-market-and-competitor-research.md`) found the name "Tab Organizer" used by 5+ store extensions. After checking about 25 names in the real store, the US trademark search, GitHub and npm, the new name is **Pigeontab** (store name "Pigeontab: Tab Groups by Your Rules"). The GitHub repo is now `EslamSife/pigeontab`; old links redirect. Added rules export and import with Undo (a separate page, because a file picker can close the popup), and a release workflow that publishes the ZIP with checksums. Tag `v3.8.0` marks the code that was submitted to the store.
 
 ## Bugs found and fixed
 
@@ -148,9 +152,9 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 
 The tests use Playwright (a tool that drives a real Chrome browser by code) with "Chrome for Testing" and the extension loaded. They are in `tests/`.
 
-GitHub Actions runs them on Windows, macOS and Linux on every push (https://github.com/EslamSife/tab-organizer/actions).
+GitHub Actions runs them on Windows, macOS and Linux on every push (https://github.com/EslamSife/pigeontab/actions).
 
-To run them: `cd tests`, then `npm install` and `npm run browser` once, then `npm test`. Every suite runs, then the failed suites are listed. They run headless (no window); set `HEADED=1` to watch. A failed check makes `npm test` exit with code 1. `npm run screens` saves popup pictures to `tests/out/`. `npm run pack` builds `dist/tab-organizer.zip` with only the extension files.
+To run them: `cd tests`, then `npm install` and `npm run browser` once, then `npm test`. Every suite runs, then the failed suites are listed. They run headless (no window); set `HEADED=1` to watch. A failed check makes `npm test` exit with code 1. `npm run screens` saves popup pictures to `tests/out/`. `npm run pack` builds `dist/pigeontab.zip` with only the extension files.
 
 | Test suite | File | Checks | Result |
 |---|---|---|---|
@@ -162,6 +166,7 @@ To run them: `cd tests`, then `npm install` and `npm run browser` once, then `np
 | Title matching (3.5.0) | `title.mjs` | 11 | All pass |
 | Merge same-name groups, ungroup before close (3.6.0, 3.7.0) | `merge-groups.mjs` | 20 | All pass |
 | Open source fixes (3.8.0) | `fixes-3-8.mjs` | 7 | All pass |
+| Rules backup and restore (3.9.0) | `rules-file.mjs` | 13 | All pass |
 
 The 3.4.0 tests were also run against the old 3.3.0 code to prove they catch the bugs: the storage, Undo, other-window and duplicate group checks all failed there. The 3.8.0 tests were also run against the 3.7.0 code first: all 5 new checks and the new `#part` check failed there. The duplicate group bug depends on timing, so its test runs 3 rounds of 8 tabs. The "site match wins" title check was also proven: it fails when that rule is removed from the code.
 
@@ -173,8 +178,8 @@ Not tested: Chrome's own "Open Obsidian?" question, because the test tool cannot
 
 1. Reload the extension at `chrome://extensions` (version 3.8.0).
 2. Check the vault name and folder under "Obsidian" in the popup. If they are empty, type `Sife_Notes` and `00_Inbox` once.
-3. The code is public at https://github.com/EslamSife/tab-organizer. Still check that your Integrant contract does not claim this project.
-4. Chrome Web Store: submitted on 2026-10-17. Wait for Google's review email. If it is rejected, fix the reason it gives and submit again.
+3. The code is public at https://github.com/EslamSife/pigeontab. Still check that your Integrant contract does not claim this project.
+4. Chrome Web Store: 3.8.0 was submitted on 2026-10-17. Wait for Google's review email. If it is rejected, fix the reason it gives and submit again. After it is approved, upload `dist/pigeontab.zip` (3.9.0, build it with `cd tests && npm run pack`) in the Package tab, replace the 4 images with the new ones in `store/`, paste the new description from `store/listing.md`, and submit.
 5. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups). Then run the saved groups check once in your real Chrome: note how many "Work" entries the Tab groups menu shows, then in the popup press Organize, close the Work group, press Undo, press Organize again, restart Chrome, and count again. No new copy means the 3.6.0 fix works. (On 2026-10-17 an automated test restarted the test Chrome 4 times with auto-group on: the open groups stayed Work, Learning, Shopping with no copies. The test Chrome cannot show saved groups, so this manual check is still needed.)
 6. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
 7. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.

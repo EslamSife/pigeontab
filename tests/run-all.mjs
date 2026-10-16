@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const suites = ["main", "dedupe", "fixes", "obsidian", "fixes-3-4", "title", "merge-groups", "fixes-3-8"];
+const suites = ["main", "dedupe", "fixes", "obsidian", "fixes-3-4", "title", "merge-groups", "fixes-3-8", "rules-file"];
 const here = fileURLToPath(new URL(".", import.meta.url));
 
 // Every suite runs, even after a failure, so one run shows all failures.

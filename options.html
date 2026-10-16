@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pigeontab rules backup</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Back up or restore your rules</h1>
+  <p class="hint">"Export rules" saves your rules as a file in your Downloads folder. Keep it as a backup, or open it on another computer with "Import rules". The file has only your group names, colors and site words.</p>
+
+  <div class="file-actions">
+    <button id="export" class="primary">Export rules</button>
+    <button id="import">Import rules</button>
+  </div>
+  <input type="file" id="import-file" accept=".json,application/json" hidden>
+  <p class="hint">Importing replaces all your current rules. You can undo it right after.</p>
+
+  <div id="status" role="status">
+    <span id="status-text"></span>
+    <button id="status-action" hidden>Undo</button>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

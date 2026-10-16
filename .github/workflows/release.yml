@@ -1,0 +1,39 @@
+name: Release
+
+# Builds the store ZIP on GitHub from a version tag and publishes it with SHA-256 checksums,
+# so anyone can check that the store version has the same files as this code.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing version tag to build, like v3.8.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: Check that the tag matches the manifest version
+        run: test "v$(jq -r .version manifest.json)" = "$TAG"
+      - name: Build the ZIP
+        run: cd tests && npm run pack
+      - name: Write checksums
+        run: |
+          mkdir unpacked && unzip -q dist/*.zip -d unpacked
+          (cd unpacked && find . -type f | sort | xargs sha256sum | sed 's|  \./|  |') > SHA256SUMS.txt
+          (cd dist && sha256sum *.zip) >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Publish the release
+        run: |
+          gh release create "$TAG" dist/*.zip SHA256SUMS.txt --title "$TAG" --notes "Built by GitHub Actions from tag $TAG. SHA256SUMS.txt lists a checksum for every file in the ZIP, so you can compare them with the files Chrome installed. See \"Check that the store version matches this code\" in the README."
