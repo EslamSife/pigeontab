@@ -1,14 +1,7 @@
-import { chromium } from "playwright";
-const EXT = new URL("..", import.meta.url).pathname;
-const OUT = new URL("out/", import.meta.url).pathname;
-const exe = process.env.HOME + "/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
-const ctx = await chromium.launchPersistentContext("", { executablePath: exe, headless: false,
-  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`] });
+import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
-let [sw] = ctx.serviceWorkers(); if (!sw) sw = await ctx.waitForEvent("serviceworker");
-const id = sw.url().split("/")[2];
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const check = (name, ok, extra = "") => console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`);
+const { sw, id } = await extensionWorker(ctx);
 const state = () => sw.evaluate(async () => {
   const ws = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
   const gs = await chrome.tabGroups.query({});

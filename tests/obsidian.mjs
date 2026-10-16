@@ -1,15 +1,8 @@
-import { chromium } from "playwright";
+import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
 import { writeFileSync } from "node:fs";
-const EXT = new URL("..", import.meta.url).pathname;
-const OUT = new URL("out/", import.meta.url).pathname;
-const exe = process.env.HOME + "/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
-const ctx = await chromium.launchPersistentContext("", { executablePath: exe, headless: false,
-  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`] });
-await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: `<title>Spring Boot — Guide [part ${r.request().url().slice(-1)}]</title>hi` }));
-let [sw] = ctx.serviceWorkers(); if (!sw) sw = await ctx.waitForEvent("serviceworker");
-const id = sw.url().split("/")[2];
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const check = (name, ok, extra = "") => console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`);
+const ctx = await launch();
+await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html; charset=utf-8", body: `<title>Spring Boot — Guide [part ${r.request().url().slice(-1)}]</title>hi` }));
+const { sw, id } = await extensionWorker(ctx);
 const errors = [];
 // Record the obsidian:// link instead of letting Chrome show its native question.
 await sw.evaluate(() => {
@@ -52,6 +45,7 @@ check("link opened on a tab outside the group", launches.length === 1 && launche
 writeFileSync(OUT + "uri.txt", launches[0]?.url ?? "");
 const params = new URL(launches[0].url.replace("obsidian://new", "https://x/new")).searchParams;
 check("vault and file in link", params.get("vault") === "Sife_Notes" && /^00_Inbox\/tabs-delete-me-test-\d{4}-\d{2}-\d{2}-\d{4}$/.test(params.get("file")), params.get("file"));
+check("note has the tab title, long dash replaced", params.get("content").includes("[Spring Boot - Guide \\[part 1\\]](https://docs.spring.io/a1)"), params.get("content"));
 
 await p.click("#status-action"); await wait(1500);
 const back = await sw.evaluate(async () => {
@@ -72,11 +66,9 @@ await sw.evaluate(async () => {
   const g = await chrome.tabs.group({ tabIds: ts.map((t) => t.id), createProperties: { windowId: w.id } });
   await chrome.tabGroups.update(g, { title: "Solo" });
   globalThis.__soloWindow = w.id;
-  const { closeGroup } = globalThis;
 });
 const solo = await sw.evaluate(async () => {
   const [g] = await chrome.tabGroups.query({ title: "Solo" });
-  const reply = await new Promise((resolve) => chrome.runtime.onMessage.hasListeners() && resolve(null));
   return g.id;
 });
 const p2 = await ctx.newPage(); // popup page opened in the Solo window is not possible, so call the action directly

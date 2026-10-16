@@ -1,17 +1,9 @@
-import { chromium } from "playwright";
-const EXT = new URL("..", import.meta.url).pathname;
-const OUT = new URL("out/", import.meta.url).pathname;
-const exe = process.env.HOME + "/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
-
-const ctx = await chromium.launchPersistentContext("", { executablePath: exe, headless: false,
-  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`] });
+import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
-let [sw] = ctx.serviceWorkers(); if (!sw) sw = await ctx.waitForEvent("serviceworker");
-const id = sw.url().split("/")[2];
+const { sw, id } = await extensionWorker(ctx);
 const storedRules = () => sw.evaluate(async () => { const s = await chrome.storage.sync.get(null); return s.ruleOrder.map((id) => s[`rule.${id}`]); });
 const errors = [];
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const check = (name, ok, extra = "") => console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`);
 const groups = () => sw.evaluate(async () => {
   const gs = await chrome.tabGroups.query({}); const tabs = await chrome.tabs.query({});
   return gs.map((g) => `${g.title}:${g.color}(${tabs.filter((t) => t.groupId === g.id).length})`).sort().join(" ");
