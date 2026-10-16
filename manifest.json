@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Organizer",
+  "version": "3.3.0",
+  "description": "Groups your tabs by your own rules, like Work, Learning and Shopping.",
+  "permissions": ["tabs", "tabGroups", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Tab Organizer",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "organize-tabs": {
+      "suggested_key": { "default": "Alt+Shift+O" },
+      "description": "Organize tabs"
+    },
+    "merge-windows": {
+      "suggested_key": { "default": "Alt+Shift+M" },
+      "description": "Merge all windows"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tab Organizer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Tab Organizer</h1>
+  <p id="summary" class="hint"></p>
+
+  <div class="actions">
+    <button id="organize" class="primary" data-action="organize">Organize now</button>
+    <button id="merge" data-action="merge">Merge windows</button>
+    <button id="dedupe" data-action="dedupe">Close duplicates</button>
+  </div>
+  <p class="hint">"Merge windows" moves the tabs from all your windows into this one, then groups them. "Close duplicates" keeps one copy of each page across all windows.</p>
+
+  <div id="status" role="status">
+    <span id="status-text"></span>
+    <button id="status-action" hidden></button>
+    <button id="status-close" hidden aria-label="Close message" title="Close">&times;</button>
+  </div>
+
+  <section id="unmatched" hidden>
+    <h2 id="unmatched-title"></h2>
+    <p class="hint">Pick a rule to add the site to it. The tabs are grouped again right away.</p>
+    <ul id="unmatched-list"></ul>
+  </section>
+
+  <section>
+    <h2>Groups in this window</h2>
+    <ul id="groups-list"></ul>
+    <p id="no-groups" class="hint" hidden>No groups yet. Press Organize now.</p>
+  </section>
+
+  <label class="toggle">
+    <input type="checkbox" id="auto">
+    <span>Auto-group new pages</span>
+  </label>
+  <p class="hint">When on, a page that is not in any group goes to its rule group after it loads. Tabs already in a group are never moved.</p>
+
+  <h2>Rules <span id="save-state" class="hint"></span></h2>
+  <p class="hint">A tab joins the first rule (from the top) whose word is part of the site name. "github" matches github.com and gist.github.com, but not githubstatus.com.</p>
+  <div id="rules"></div>
+  <button id="add">+ Add rule</button>
+
+  <h2>Obsidian</h2>
+  <div class="obsidian-settings">
+    <label>Vault name <input id="obsidian-vault" autocomplete="off"></label>
+    <label>Folder <input id="obsidian-folder" autocomplete="off"></label>
+  </div>
+  <p class="hint">"Save to Obsidian" makes a note with a link to each tab in this folder. Chrome asks "Open Obsidian?" first; choose Open, and tick "Always allow" if Chrome offers it.</p>
+
+  <p class="hint">Shortcuts: <span id="shortcuts">not set</span> (change them at chrome://extensions/shortcuts)</p>
+  <button id="ungroup" class="quiet" data-action="ungroup">Ungroup all tabs in this window</button>
+
+  <template id="rule-template">
+    <div class="rule">
+      <span class="dot"></span>
+      <input class="name" placeholder="Group name" aria-label="Group name">
+      <select class="color" aria-label="Group color"></select>
+      <button class="up" aria-label="Move rule up" title="Move up">&uarr;</button>
+      <button class="down" aria-label="Move rule down" title="Move down">&darr;</button>
+      <button class="delete" aria-label="Delete rule" title="Delete rule">&times;</button>
+      <textarea class="keywords" rows="2" aria-label="Site words, separated by commas" placeholder="Words, comma separated: jira, github"></textarea>
+      <p class="rule-error"></p>
+    </div>
+  </template>
+
+  <template id="group-template">
+    <li class="group">
+      <div class="group-line">
+        <span class="dot"></span>
+        <span class="group-name"></span>
+        <button class="close-group">Close...</button>
+      </div>
+      <div class="confirm" hidden>
+        <p class="confirm-text"></p>
+        <div class="confirm-buttons">
+          <button class="save-close primary">Save to Obsidian and close</button>
+          <button class="just-close">Close without saving</button>
+          <button class="cancel">Cancel</button>
+        </div>
+      </div>
+    </li>
+  </template>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
