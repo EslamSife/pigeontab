@@ -1,0 +1,85 @@
+import { chromium } from "playwright";
+const EXT = new URL("..", import.meta.url).pathname;
+const OUT = new URL("out/", import.meta.url).pathname;
+const exe = process.env.HOME + "/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const ctx = await chromium.launchPersistentContext("", { executablePath: exe, headless: false,
+  args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`] });
+await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
+let [sw] = ctx.serviceWorkers(); if (!sw) sw = await ctx.waitForEvent("serviceworker");
+const id = sw.url().split("/")[2];
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const check = (name, ok, extra = "") => console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`);
+const state = () => sw.evaluate(async () => {
+  const ws = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+  const gs = await chrome.tabGroups.query({});
+  return ws.map((w) => w.tabs.map((t) => {
+    const u = t.url || t.pendingUrl; const g = gs.find((x) => x.id === t.groupId);
+    return `${u.startsWith("http") ? u.replace(/^https?:\/\//, "") : "ext"}${t.pinned ? "*" : ""}${g ? "[" + g.title + "]" : ""}`;
+  }).join(" , "));
+});
+const canon = (s) => JSON.stringify(s.map((w) => w.split(" , ").sort().join(" , ")).sort());
+
+const p = await ctx.newPage();
+await p.goto(`chrome-extension://${id}/popup.html`);
+await sw.evaluate(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const [popupTab] = await chrome.tabs.query({ url: "chrome-extension://*/popup.html" });
+  const w1 = popupTab.windowId;
+  const mk = (windowId, url) => chrome.tabs.create({ windowId, url, active: false });
+  const a = await mk(w1, "https://github.com/a");
+  await mk(w1, "https://github.com/a#readme");
+  const b1 = await mk(w1, "https://www.bbc.com/news");
+  const b2 = await mk(w1, "https://www.bbc.com/news");
+  await mk(w1, "https://github.com/a?tab=issues");
+  await sleep(500);
+  const g = await chrome.tabs.group({ tabIds: [b1.id, b2.id], createProperties: { windowId: w1 } });
+  await chrome.tabGroups.update(g, { title: "News", color: "red" });
+  const w2 = await chrome.windows.create({ url: "https://github.com/a", focused: false });
+  await chrome.tabs.update(w2.tabs[0].id, { pinned: true });
+  await chrome.tabs.create({ windowId: w2.id, url: "https://example.net/c", active: false });
+  const w3 = await chrome.windows.create({ url: "https://example.net/c", focused: false });
+  await chrome.tabs.create({ windowId: w3.id, url: "https://www.bbc.com/news#top", active: false });
+  await sleep(800);
+});
+await p.bringToFront();
+const before = await state();
+console.log("BEFORE:\n  " + before.join("\n  "));
+await p.click("#dedupe"); await wait(600);
+const status = (await p.textContent("#status-text")).trim();
+const after = await state();
+console.log("AFTER:\n  " + after.join("\n  "));
+check("message", status === "Closed 5 duplicate tabs.", `"${status}"`);
+check("undo shown", (await p.textContent("#status-action")) === "Undo");
+const flat = after.join(" , ");
+check("pinned github copy kept, others closed", flat.includes("github.com/a*") && !/github\.com\/a( |#|$)/.test(flat.replace("github.com/a*", "")), flat);
+check("query string page kept (different page)", flat.includes("github.com/a?tab=issues"));
+check("grouped bbc copy kept, in News", (flat.match(/bbc\.com/g) || []).length === 1 && flat.includes("bbc.com/news[News]"));
+check("one example.net left", (flat.match(/example\.net/g) || []).length === 1);
+check("duplicate-only window closed", after.length === 2, `${after.length} windows`);
+await p.click("#dedupe"); await wait(400);
+check("second run finds nothing", (await p.textContent("#status-text")).trim() === "No duplicate tabs found.");
+
+// A run that closes nothing keeps the Undo of the first run.
+await sw.evaluate(() => chrome.storage.session.get("undo")).then((u) => check("no-op run keeps the first run's undo", u.undo.closedTabs.length > 0));
+console.log("--- undo test ---");
+await sw.evaluate(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const [popupTab] = await chrome.tabs.query({ url: "chrome-extension://*/popup.html" });
+  await chrome.tabs.create({ windowId: popupTab.windowId, url: "https://github.com/a#x", active: false });
+  const w = await chrome.windows.create({ url: "https://example.net/c", focused: false });
+  await chrome.tabs.create({ windowId: w.id, url: "https://www.bbc.com/news", active: false });
+  const [b] = await chrome.tabs.query({ windowId: w.id, url: "https://www.bbc.com/*" });
+  await sleep(500);
+  const g = await chrome.tabs.group({ tabIds: [b.id], createProperties: { windowId: w.id } });
+  await chrome.tabGroups.update(g, { title: "Later", color: "cyan" });
+  await sleep(300);
+});
+await p.bringToFront();
+const before2 = await state();
+await p.click("#dedupe"); await wait(600);
+console.log("closed:", (await p.textContent("#status-text")).trim());
+await p.click("#status-action"); await wait(1200);
+const restored = await state();
+check("undo restores every tab, window, pin and group", canon(restored) === canon(before2),
+  "\n   before: " + before2.join(" || ") + "\n   after:  " + restored.join(" || "));
+await ctx.close();

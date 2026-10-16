@@ -29,7 +29,7 @@
 
 body {
   width: 360px;
-  margin: 0;
+  margin: 0 auto;
   padding: 14px 16px;
   background: var(--bg);
   color: var(--text);
@@ -66,8 +66,10 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
-.rule .keywords, .rule .rule-error { grid-column: 2 / -1; }
-.rule .keywords { resize: vertical; }
+.rule .keywords, .rule .rule-error, .rule .match-title { grid-column: 2 / -1; }
+.match-title { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.match-title input { margin: 0; padding: 0; }
+.rule .keywords { resize: vertical; field-sizing: content; min-height: 2lh; }
 .rule .up, .rule .down, .rule .delete { padding: 4px 0; }
 .rule .name[aria-invalid="true"], .rule .keywords[aria-invalid="true"] { border-color: var(--error); }
 .rule-error { margin: 0; color: var(--error); font-size: 12px; }

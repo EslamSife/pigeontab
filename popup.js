@@ -68,27 +68,17 @@ function organizeText({ movedCount, groupCount }) {
 }
 
 const describe = {
-  organize: (result) => ({ text: organizeText(result), changed: result.movedCount > 0 }),
-  merge: (result) => ({
-    text: result.mergedWindows
-      ? `Merged ${plural(result.mergedWindows, "window")} into this one. ${organizeText(result)}`
-      : `No other windows to merge. ${organizeText(result)}`,
-    changed: result.mergedWindows > 0 || result.movedCount > 0,
-  }),
-  dedupe: (result) => ({
-    text: result.closedCount ? `Closed ${plural(result.closedCount, "duplicate tab")}.` : "No duplicate tabs found.",
-    changed: result.closedCount > 0,
-  }),
-  closeGroup: (result) => ({
-    text: result.saved
-      ? `Closed "${result.title}" and sent ${plural(result.closedCount, "tab")} to Obsidian. If Chrome asks, choose Open.`
-      : `Closed "${result.title}" (${plural(result.closedCount, "tab")}).`,
-    changed: true,
-  }),
-  ungroup: (result) => ({
-    text: result.groupCount ? `Removed ${plural(result.groupCount, "group")}.` : "No groups to remove.",
-    changed: result.groupCount > 0,
-  }),
+  organize: organizeText,
+  merge: (result) => [
+    result.mergedWindows ? `Merged ${plural(result.mergedWindows, "window")} into this one.` : "No other windows to merge.",
+    result.joinedGroups ? `Joined ${plural(result.joinedGroups, "group")} with the same name as another.` : "",
+    result.movedCount || !(result.mergedWindows || result.joinedGroups) ? organizeText(result) : "",
+  ].filter(Boolean).join(" "),
+  dedupe: (result) => (result.closedCount ? `Closed ${plural(result.closedCount, "duplicate tab")}.` : "No duplicate tabs found."),
+  closeGroup: (result) => (result.saved
+    ? `Closed "${result.title}" and sent ${plural(result.closedCount, "tab")} to Obsidian. If Chrome asks, choose Open.`
+    : `Closed "${result.title}" (${plural(result.closedCount, "tab")}).`),
+  ungroup: (result) => (result.groupCount ? `Removed ${plural(result.groupCount, "group")}.` : "No groups to remove."),
 };
 
 function setBusy(busy) {
@@ -101,9 +91,8 @@ async function runAction(action, options = {}) {
   setBusy(true);
   try {
     const result = await perform(action, options);
-    const { text, changed } = describe[action](result);
     const undo = { label: "Undo", onClick: undoLastAction };
-    showStatus(text, changed ? { button: undo, seconds: UNDO_SECONDS } : {});
+    showStatus(describe[action](result), result.changed ? { button: undo, seconds: UNDO_SECONDS } : {});
     showUnmatched(result.unmatched ?? []);
   } catch (error) {
     showStatus(`Could not finish: ${error.message}`, {
@@ -172,15 +161,19 @@ function groupRow(group, tabCount) {
   return item;
 }
 
+async function saveObsidian() {
+  clearTimeout(obsidianTimer);
+  obsidianTimer = null;
+  try {
+    await saveSettings({ obsidianVault: vaultInput.value.trim(), obsidianFolder: folderInput.value.trim() });
+  } catch (error) {
+    showStatus(`Could not save: ${error.message}`, { error: true });
+  }
+}
+
 function saveObsidianSoon() {
   clearTimeout(obsidianTimer);
-  obsidianTimer = setTimeout(async () => {
-    try {
-      await saveSettings({ obsidianVault: vaultInput.value.trim(), obsidianFolder: folderInput.value.trim() });
-    } catch (error) {
-      showStatus(`Could not save: ${error.message}`, { error: true });
-    }
-  }, SAVE_DELAY_MS);
+  obsidianTimer = setTimeout(saveObsidian, SAVE_DELAY_MS);
 }
 
 function showUnmatched(sites) {
@@ -231,8 +224,12 @@ async function addSiteToRule(site, ruleId) {
 }
 
 
+// Only the site name is kept, so a pasted "https://www.github.com/x" becomes "github.com".
 function parseWords(text) {
-  return text.split(",").map((word) => word.trim().toLowerCase()).filter(Boolean);
+  return text
+    .split(",")
+    .map((word) => word.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").split(/[/:?#]/)[0])
+    .filter(Boolean);
 }
 
 function readRow(row) {
@@ -241,6 +238,7 @@ function readRow(row) {
     name: row.querySelector(".name").value.trim(),
     color: row.querySelector(".color").value,
     keywords: parseWords(row.querySelector(".keywords").value),
+    matchTitle: row.querySelector(".title-check").checked,
   };
 }
 
@@ -259,6 +257,7 @@ function addRuleRow(rule, beforeRow = null) {
   color.value = rule.color;
   row.querySelector(".name").value = rule.name;
   row.querySelector(".keywords").value = rule.keywords.join(", ");
+  row.querySelector(".title-check").checked = Boolean(rule.matchTitle);
 
   const errorId = `error-${rule.id}`;
   row.querySelector(".rule-error").id = errorId;
@@ -359,6 +358,11 @@ rulesList.addEventListener("input", (event) => {
   saveSoon();
 });
 
+// When you leave the words box, it shows the words the way the rule uses them.
+rulesList.addEventListener("change", (event) => {
+  if (event.target.matches(".keywords")) event.target.value = parseWords(event.target.value).join(", ");
+});
+
 rulesList.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -392,6 +396,7 @@ autoToggle.addEventListener("change", async () => {
 // Save anything still waiting when the popup closes.
 window.addEventListener("pagehide", () => {
   if (saveState.textContent === "Saving...") saveRules();
+  if (obsidianTimer) saveObsidian();
 });
 
 // Actions started with a shortcut have no popup, so the Undo is offered the next time it opens.

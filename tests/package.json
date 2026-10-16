@@ -1,0 +1,12 @@
+{
+  "name": "tab-organizer-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "mkdir -p out && node main.mjs && node dedupe.mjs && node fixes.mjs && node obsidian.mjs && node fixes-3-4.mjs && node title.mjs && node merge-groups.mjs",
+    "screens": "mkdir -p out && node screens.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  }
+}

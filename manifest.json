@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Organizer",
-  "version": "3.3.0",
+  "version": "3.7.0",
   "description": "Groups your tabs by your own rules, like Work, Learning and Shopping.",
   "permissions": ["tabs", "tabGroups", "storage"],
   "background": {

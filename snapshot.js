@@ -13,16 +13,22 @@ export async function takeSnapshot() {
   };
 }
 
+function tabMoved(saved, windowId, openTabs) {
+  const now = openTabs.get(saved.id);
+  return now.windowId !== windowId || now.groupId !== saved.groupId || now.pinned !== saved.pinned;
+}
+
+// Only windows where a tab changed window, group or pin are put back,
+// so what you did in other windows since the action is left alone.
 export async function restoreSnapshot(snapshot) {
-  const openTabs = await chrome.tabs.query({});
-  const openTabIds = new Set(openTabs.map((tab) => tab.id));
+  const openTabs = new Map((await chrome.tabs.query({})).map((tab) => [tab.id, tab]));
   const openWindowIds = new Set((await chrome.windows.getAll()).map((window) => window.id));
   const savedWindows = snapshot.windows
-    .map((window) => ({ ...window, tabs: window.tabs.filter((tab) => openTabIds.has(tab.id)) }))
-    .filter((window) => window.tabs.length);
+    .map((window) => ({ ...window, tabs: window.tabs.filter((tab) => openTabs.has(tab.id)) }))
+    .filter((window) => window.tabs.some((tab) => tabMoved(tab, window.id, openTabs)));
 
   const savedTabIds = new Set(savedWindows.flatMap((window) => window.tabs.map((tab) => tab.id)));
-  const groupedNow = openTabs.filter((tab) => savedTabIds.has(tab.id) && tab.groupId !== -1);
+  const groupedNow = [...openTabs.values()].filter((tab) => savedTabIds.has(tab.id) && tab.groupId !== -1);
   if (groupedNow.length) await chrome.tabs.ungroup(groupedNow.map((tab) => tab.id));
 
   for (const saved of savedWindows) {

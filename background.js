@@ -2,9 +2,9 @@ import { closeDuplicateTabs, closeGroup, mergeAllWindows, organizeNewTab, organi
 import { reopenTabs, restoreSnapshot, takeSnapshot } from "./snapshot.js";
 
 const ACTIONS = {
-  organize: { run: organizeWindow, label: "Organize tabs" },
-  merge: { run: mergeAllWindows, label: "Merge windows" },
-  ungroup: { run: ungroupWindow, label: "Ungroup all" },
+  organize: { run: organizeWindow, label: "Organize tabs", changed: (result) => result.movedCount > 0 },
+  merge: { run: mergeAllWindows, label: "Merge windows", changed: (result) => result.mergedWindows > 0 || result.joinedGroups > 0 || result.movedCount > 0 },
+  ungroup: { run: ungroupWindow, label: "Ungroup all", changed: (result) => result.groupCount > 0 },
 };
 
 const COMMANDS = {
@@ -14,6 +14,17 @@ const COMMANDS = {
 
 // Tabs that Undo opened again. Auto-group must leave them where Undo put them.
 const reopenedTabIds = new Set();
+
+// Jobs run one at a time. Two pages that finish loading together would
+// otherwise both see no "Work" group yet, and each would make one.
+let lastJob = Promise.resolve();
+function runInTurn(job) {
+  const result = lastJob.then(job);
+  lastJob = result.catch(() => {});
+  return result;
+}
+
+const saveUndo = (record) => chrome.storage.session.set({ undo: { ...record, at: Date.now() } });
 
 async function undoLastAction() {
   const { undo } = await chrome.storage.session.get("undo");
@@ -25,47 +36,52 @@ async function undoLastAction() {
 }
 
 // The work runs here, not in the popup, so it finishes even if the popup closes.
+// An action that changes nothing keeps the Undo of the action before it.
 async function perform({ action, windowId, groupId, save }) {
   if (action === "undo") return undoLastAction();
   if (action === "closeGroup") {
     const { title, closedTabs } = await closeGroup(groupId, save);
-    await chrome.storage.session.set({ undo: { closedTabs, label: `Close group ${title}`, at: Date.now() } });
-    return { title, closedCount: closedTabs.length, saved: save };
+    await saveUndo({ closedTabs, label: `Close group ${title}` });
+    return { title, closedCount: closedTabs.length, saved: save, changed: true };
   }
   if (action === "dedupe") {
     const closedTabs = await closeDuplicateTabs(windowId);
-    await chrome.storage.session.set({ undo: { closedTabs, label: "Close duplicates", at: Date.now() } });
-    return { closedCount: closedTabs.length };
+    if (closedTabs.length) await saveUndo({ closedTabs, label: "Close duplicates" });
+    return { closedCount: closedTabs.length, changed: closedTabs.length > 0 };
   }
+  const { undo: previous } = await chrome.storage.session.get("undo");
   // Saved before the action runs, so even an action that fails halfway can be undone.
-  const snapshot = await takeSnapshot();
-  await chrome.storage.session.set({ undo: { snapshot, label: ACTIONS[action].label, at: Date.now() } });
-  return ACTIONS[action].run(windowId);
+  await saveUndo({ snapshot: await takeSnapshot(), label: ACTIONS[action].label });
+  const result = await ACTIONS[action].run(windowId);
+  const changed = ACTIONS[action].changed(result);
+  if (!changed) await (previous ? chrome.storage.session.set({ undo: previous }) : chrome.storage.session.remove("undo"));
+  return { ...result, changed };
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  perform(message).then(
+  runInTurn(() => perform(message)).then(
     (result) => sendResponse({ result }),
     (error) => sendResponse({ error: error.message }),
   );
   return true;
 });
 
-// Chrome refuses tab changes while you drag a tab, so a failed try is repeated once.
 async function autoGroup(tabId) {
   const tab = await chrome.tabs.get(tabId);
   await organizeNewTab(tab);
 }
 
+// Chrome refuses tab changes while you drag a tab, so a failed try is repeated once.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== "complete") return;
   if (reopenedTabIds.delete(tabId)) return;
-  autoGroup(tabId).catch(() => setTimeout(() => autoGroup(tabId).catch(console.error), 1000));
+  runInTurn(() => autoGroup(tabId)).catch(() =>
+    setTimeout(() => runInTurn(() => autoGroup(tabId)).catch(console.error), 1000));
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
   const action = COMMANDS[command];
   if (!action) return;
   const window = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
-  perform({ action, windowId: window.id }).catch(console.error);
+  runInTurn(() => perform({ action, windowId: window.id })).catch(console.error);
 });

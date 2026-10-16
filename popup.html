@@ -14,7 +14,7 @@
     <button id="merge" data-action="merge">Merge windows</button>
     <button id="dedupe" data-action="dedupe">Close duplicates</button>
   </div>
-  <p class="hint">"Merge windows" moves the tabs from all your windows into this one, then groups them. "Close duplicates" keeps one copy of each page across all windows.</p>
+  <p class="hint">"Merge windows" moves the tabs from all your windows into this one, joins groups that have the same name, then groups the tabs. "Close duplicates" keeps one copy of each page across all windows.</p>
 
   <div id="status" role="status">
     <span id="status-text"></span>
@@ -42,6 +42,7 @@
 
   <h2>Rules <span id="save-state" class="hint"></span></h2>
   <p class="hint">A tab joins the first rule (from the top) whose word is part of the site name. "github" matches github.com and gist.github.com, but not githubstatus.com.</p>
+  <p class="hint">With "Also match the tab title" on, a tab whose site matches no rule can join by a whole word in its title: "spring" matches "Spring Boot guide", but not "Springfield".</p>
   <div id="rules"></div>
   <button id="add">+ Add rule</button>
 
@@ -64,6 +65,7 @@
       <button class="down" aria-label="Move rule down" title="Move down">&darr;</button>
       <button class="delete" aria-label="Delete rule" title="Delete rule">&times;</button>
       <textarea class="keywords" rows="2" aria-label="Site words, separated by commas" placeholder="Words, comma separated: jira, github"></textarea>
+      <label class="match-title"><input type="checkbox" class="title-check"> Also match the tab title</label>
       <p class="rule-error"></p>
     </div>
   </template>

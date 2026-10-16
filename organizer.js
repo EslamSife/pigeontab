@@ -10,21 +10,31 @@ export const DEFAULT_SETTINGS = {
     { id: "work", name: "Work", color: "blue", keywords: ["jira", "atlassian.net", "aws.amazon", "github", "gitlab", "dev.azure", "teams.microsoft", "outlook", "confluence", "slack"] },
     { id: "ai", name: "AI", color: "purple", keywords: ["claude.ai", "chatgpt.com", "gemini.google"] },
     { id: "learning", name: "Learning", color: "green", keywords: ["youtube", "udemy", "stackoverflow", "baeldung", "medium.com"] },
-    { id: "social", name: "Social", color: "pink", keywords: ["facebook", "linkedin", "instagram", "reddit", "twitter"] },
+    { id: "social", name: "Social", color: "pink", keywords: ["facebook", "linkedin", "instagram", "reddit", "twitter", "x.com"] },
     { id: "shopping", name: "Shopping", color: "orange", keywords: ["amazon", "noon.com", "jumia"] },
   ],
 };
 
 const NO_GROUP = -1;
+const RULE_PREFIX = "rule.";
 
+// Each rule is its own storage item, because Chrome sync storage allows only 8 KB per item.
+// Version 3.3.0 and older kept all rules in one "rules" item, which is still read here.
 export async function loadSettings() {
-  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  const stored = await chrome.storage.sync.get(null);
+  const settings = Object.fromEntries(Object.entries(DEFAULT_SETTINGS).map(([key, value]) => [key, stored[key] ?? value]));
+  if (stored.ruleOrder) settings.rules = stored.ruleOrder.map((id) => stored[RULE_PREFIX + id]).filter(Boolean);
   settings.rules = settings.rules.map((rule) => (rule.id ? rule : { ...rule, id: crypto.randomUUID() }));
   return settings;
 }
 
-export async function saveSettings(changes) {
-  await chrome.storage.sync.set(changes);
+export async function saveSettings({ rules, ...changes }) {
+  if (!rules) return chrome.storage.sync.set(changes);
+  const ruleItems = Object.fromEntries(rules.map((rule) => [RULE_PREFIX + rule.id, rule]));
+  const storedKeys = Object.keys(await chrome.storage.sync.get(null));
+  await chrome.storage.sync.set({ ...changes, ...ruleItems, ruleOrder: rules.map((rule) => rule.id) });
+  const unused = storedKeys.filter((key) => key === "rules" || (key.startsWith(RULE_PREFIX) && !(key in ruleItems)));
+  if (unused.length) await chrome.storage.sync.remove(unused);
 }
 
 // Unfinished rules (no name or no words) are kept in settings but not used.
@@ -56,15 +66,38 @@ function matchesSite(host, word) {
   return host === word || host.startsWith(`${word}.`) || host.endsWith(`.${word}`) || host.includes(`.${word}.`);
 }
 
-export function findRule(url, rules) {
-  const host = hostnameOf(url);
-  if (!host) return null;
-  return rules.find((rule) => rule.keywords.some((word) => matchesSite(host, word))) ?? null;
+// A title word must be a whole word: "spring" matches "Spring Boot guide", but not "Springfield".
+function matchesTitle(title, word) {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, "iu").test(title);
 }
 
-async function moveToGroup(tabIds, rule, windowId) {
+// A site match always wins. The title is checked only when no rule matches the site.
+export function findRule(tab, rules) {
+  const host = hostnameOf(tab.url || tab.pendingUrl);
+  if (!host) return null;
+  return rules.find((rule) => rule.keywords.some((word) => matchesSite(host, word)))
+    ?? rules.find((rule) => rule.matchTitle && rule.keywords.some((word) => matchesTitle(tab.title ?? "", word)))
+    ?? null;
+}
+
+// Chrome keeps a saved copy of a group that is closed or left empty, but deletes a
+// group whose tabs are ungrouped. So tabs leave their old group by ungrouping first.
+async function leaveGroups(tabs, keepGroupId = NO_GROUP) {
+  const leaving = tabs.filter((tab) => tab.groupId !== NO_GROUP && tab.groupId !== keepGroupId);
+  if (leaving.length) await chrome.tabs.ungroup(leaving.map((tab) => tab.id));
+}
+
+async function closeTabs(tabs) {
+  await leaveGroups(tabs);
+  await chrome.tabs.remove(tabs.map((tab) => tab.id));
+}
+
+async function moveToGroup(tabs, rule, windowId) {
   const groups = await chrome.tabGroups.query({ windowId });
   const group = groups.find((g) => g.title === rule.name);
+  const tabIds = tabs.map((tab) => tab.id);
+  await leaveGroups(tabs, group?.id);
   if (group) {
     await chrome.tabs.group({ groupId: group.id, tabIds });
     await chrome.tabGroups.update(group.id, { color: rule.color });
@@ -95,7 +128,7 @@ export async function organizeWindow(windowId) {
   for (const tab of tabs) {
     if (tab.groupId !== NO_GROUP && !ruleGroupIds.has(tab.groupId)) continue;
     const url = tab.url || tab.pendingUrl;
-    const rule = findRule(url, rules);
+    const rule = findRule(tab, rules);
     if (rule) {
       if (!tabsByRule.has(rule)) tabsByRule.set(rule, []);
       tabsByRule.get(rule).push(tab);
@@ -114,7 +147,7 @@ export async function organizeWindow(windowId) {
       movedCount += moved;
       groupCount += 1;
     }
-    await moveToGroup(ruleTabs.map((tab) => tab.id), rule, windowId);
+    await moveToGroup(ruleTabs, rule, windowId);
   }
 
   const unmatched = [...unmatchedCounts]
@@ -127,8 +160,8 @@ export async function organizeNewTab(tab) {
   if (tab.pinned || tab.groupId !== NO_GROUP) return;
   const { autoOrganize } = await loadSettings();
   if (!autoOrganize) return;
-  const rule = findRule(tab.url, await loadUsableRules());
-  if (rule) await moveToGroup([tab.id], rule, tab.windowId);
+  const rule = findRule(tab, await loadUsableRules());
+  if (rule) await moveToGroup([tab], rule, tab.windowId);
 }
 
 export async function ungroupWindow(windowId) {
@@ -138,7 +171,31 @@ export async function ungroupWindow(windowId) {
   return { groupCount: new Set(groupedTabs.map((tab) => tab.groupId)).size };
 }
 
+// Groups with the same name are joined into the left-most one. Groups with no name are never joined.
+async function joinSameNameGroups(windowId) {
+  const tabs = await chrome.tabs.query({ windowId });
+  const groups = new Map((await chrome.tabGroups.query({ windowId })).map((group) => [group.id, group]));
+  const firstIdByTitle = new Map();
+  const tabsByFirstId = new Map();
+  for (const tab of tabs) {
+    const title = groups.get(tab.groupId)?.title;
+    if (!title) continue;
+    if (!firstIdByTitle.has(title)) firstIdByTitle.set(title, tab.groupId);
+    const firstId = firstIdByTitle.get(title);
+    if (firstId === tab.groupId) continue;
+    if (!tabsByFirstId.has(firstId)) tabsByFirstId.set(firstId, []);
+    tabsByFirstId.get(firstId).push(tab);
+  }
+  const joining = [...tabsByFirstId.values()].flat();
+  for (const [groupId, groupTabs] of tabsByFirstId) {
+    await leaveGroups(groupTabs);
+    await chrome.tabs.group({ groupId, tabIds: groupTabs.map((tab) => tab.id) });
+  }
+  return new Set(joining.map((tab) => tab.groupId)).size;
+}
+
 // Whole groups are moved first, so groups the user made by hand stay together.
+// Then groups with the same name are joined, so no name is doubled.
 export async function mergeAllWindows(targetWindowId) {
   const target = await chrome.windows.get(targetWindowId);
   const windows = await chrome.windows.getAll({ windowTypes: ["normal"], populate: true });
@@ -157,7 +214,8 @@ export async function mergeAllWindows(targetWindowId) {
     }
   }
 
-  return { mergedWindows: others.length, ...(await organizeWindow(target.id)) };
+  const joinedGroups = await joinSameNameGroups(target.id);
+  return { mergedWindows: others.length, joinedGroups, ...(await organizeWindow(target.id)) };
 }
 
 function pageKey(url) {
@@ -196,7 +254,7 @@ export async function closeDuplicateTabs(windowId) {
       ?? copies[0];
     closing.push(...copies.filter((tab) => tab !== keep));
   }
-  if (closing.length) await chrome.tabs.remove(closing.map((tab) => tab.id));
+  if (closing.length) await closeTabs(closing);
   return closing.map((tab) => closedTabInfo(tab, groups.find((g) => g.id === tab.groupId)));
 }
 
@@ -216,6 +274,6 @@ export async function closeGroup(groupId, save) {
   const group = await chrome.tabGroups.get(groupId);
   const tabs = await chrome.tabs.query({ groupId });
   if (save) await sendToObsidian(group, tabs, await loadSettings());
-  await chrome.tabs.remove(tabs.map((tab) => tab.id));
+  await closeTabs(tabs);
   return { title: group.title || "Unnamed group", closedTabs: tabs.map((tab) => closedTabInfo(tab, group)) };
 }
