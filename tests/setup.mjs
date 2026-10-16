@@ -1,7 +1,11 @@
+import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-export const EXT = new URL("..", import.meta.url).pathname;
-export const OUT = new URL("out/", import.meta.url).pathname;
+// fileURLToPath gives a real path on every system ("C:\..." on Windows, not "/C:/...").
+export const EXT = fileURLToPath(new URL("..", import.meta.url));
+export const OUT = fileURLToPath(new URL("out/", import.meta.url));
+mkdirSync(OUT, { recursive: true });
 
 // The "chromium" channel can load extensions without a window. Set HEADED=1 to watch the run.
 export function launch() {
