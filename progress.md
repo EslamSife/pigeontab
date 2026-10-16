@@ -59,7 +59,7 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 10. **Duplicate groups (version 3.6.0).** You saw two groups with the same name after Merge windows, and many copies of the same group in Chrome's group search. Fixed both causes we could find (see the 3.6.0 table).
 11. **Join same-name groups in one window (version 3.7.0).** Merge in 3.6.0 only joined groups coming from other windows. Now it also joins same-name groups that were already in the current window.
 12. **Open source readiness (version 3.8.0).** A full review checked if the project can be published. The report is in the vault: `00_Inbox/tab-organizer-open-source-readiness-review.md`. This step fixed its findings: MIT license, README, icons, a ZIP build, GitHub Actions, tests that run headless on any machine and fail on a failed check, and the bugs in the 3.8.0 table. The git history now uses your personal email (set for this repo only).
-13. **Chrome Web Store package (version 3.8.0).** Added a privacy policy (`PRIVACY.md`, the store requires one even when data stays on the computer), store images made from the real popup (`store/`, rebuild with `cd tests && npm run store`), and the text for every dashboard field (`store/listing.md`).
+13. **Chrome Web Store package (version 3.8.0).** Added a privacy policy (`PRIVACY.md`, the store requires one even when data stays on the computer), store images made from the real popup (`store/`, rebuild with `cd tests && npm run store`), and the text for every dashboard field (`store/listing.md`). Submitted for review on 2026-10-17 (item ID phjfbhpdiffncplhmpmbfdjhbdcijogg), with the blue icon, 3 screenshots and the small promo tile. A new icon was tried and dropped; the blue icon stays.
 
 ## Bugs found and fixed
 
@@ -174,7 +174,7 @@ Not tested: Chrome's own "Open Obsidian?" question, because the test tool cannot
 1. Reload the extension at `chrome://extensions` (version 3.8.0).
 2. Check the vault name and folder under "Obsidian" in the popup. If they are empty, type `Sife_Notes` and `00_Inbox` once.
 3. The code is public at https://github.com/EslamSife/tab-organizer. Still check that your Integrant contract does not claim this project.
-4. To publish in the Chrome Web Store: follow `store/listing.md`. You need to register as a developer (one-time fee) and upload `dist/tab-organizer.zip`.
+4. Chrome Web Store: submitted on 2026-10-17. Wait for Google's review email. If it is rejected, fix the reason it gives and submit again.
 5. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups).
 6. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
 7. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.
