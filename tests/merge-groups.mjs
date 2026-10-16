@@ -73,7 +73,8 @@ check("2 undo keeps every tab", undone.tabs === merged.tabs, `${merged.tabs} -> 
 await sw.evaluate(async () => {
   const [popupTab] = await chrome.tabs.query({ url: "chrome-extension://*/popup.html" });
   for (const w of await chrome.windows.getAll()) if (w.id !== popupTab.windowId) await chrome.windows.remove(w.id);
-  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  // Only this window: tabs of the windows just removed can still be listed for a moment on slow machines.
+  const tabs = await chrome.tabs.query({ windowId: popupTab.windowId, url: ["http://*/*", "https://*/*"] });
   if (tabs.length) await chrome.tabs.remove(tabs.map((t) => t.id));
 });
 
