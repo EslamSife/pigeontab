@@ -79,9 +79,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     setTimeout(() => runInTurn(() => autoGroup(tabId)).catch(console.error), 1000));
 });
 
-chrome.commands.onCommand.addListener(async (command) => {
+chrome.commands.onCommand.addListener((command) => {
   const action = COMMANDS[command];
   if (!action) return;
-  const window = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
-  runInTurn(() => perform({ action, windowId: window.id })).catch(console.error);
+  runInTurn(async () => {
+    const window = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
+    return perform({ action, windowId: window.id });
+  }).catch(console.error);
 });

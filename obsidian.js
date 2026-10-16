@@ -4,7 +4,7 @@ function slugOf(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-// Long dashes are replaced because the vault rules forbid them.
+// Long dashes become short ones, so the note uses plain punctuation.
 function cleanText(text) {
   return text.replace(/[–—]/g, "-");
 }
@@ -18,6 +18,7 @@ function linkLine(tab) {
 export function buildTabsNote(groupTitle, tabs, now = new Date()) {
   const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const seconds = pad(now.getSeconds());
   const name = cleanText(groupTitle || "Unnamed group");
   const slug = slugOf(groupTitle);
   const content = [
@@ -40,7 +41,7 @@ export function buildTabsNote(groupTitle, tabs, now = new Date()) {
     "## Related",
     "",
   ].join("\n");
-  return { fileName: `tabs-${slug || "group"}-${date}-${time.replace(":", "")}`, content };
+  return { fileName: `tabs-${slug || "group"}-${date}-${time.replace(":", "")}${seconds}`, content };
 }
 
 export function obsidianUri({ obsidianVault, obsidianFolder }, { fileName, content }) {

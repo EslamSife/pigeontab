@@ -4,8 +4,8 @@ export const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple
 
 export const DEFAULT_SETTINGS = {
   autoOrganize: false,
-  obsidianVault: "Sife_Notes",
-  obsidianFolder: "00_Inbox",
+  obsidianVault: "",
+  obsidianFolder: "",
   rules: [
     { id: "work", name: "Work", color: "blue", keywords: ["jira", "atlassian.net", "aws.amazon", "github", "gitlab", "dev.azure", "teams.microsoft", "outlook", "confluence", "slack"] },
     { id: "ai", name: "AI", color: "purple", keywords: ["claude.ai", "chatgpt.com", "gemini.google"] },
@@ -28,11 +28,17 @@ export async function loadSettings() {
   return settings;
 }
 
+let latestRulesSave = 0;
+
+// The rules are written before anything is awaited, so the write is sent even if the popup closes now.
+// Old rule items are removed only by the newest save, so an older save cannot delete a rule a newer one kept.
 export async function saveSettings({ rules, ...changes }) {
   if (!rules) return chrome.storage.sync.set(changes);
+  const thisSave = ++latestRulesSave;
   const ruleItems = Object.fromEntries(rules.map((rule) => [RULE_PREFIX + rule.id, rule]));
-  const storedKeys = Object.keys(await chrome.storage.sync.get(null));
   await chrome.storage.sync.set({ ...changes, ...ruleItems, ruleOrder: rules.map((rule) => rule.id) });
+  const storedKeys = Object.keys(await chrome.storage.sync.get(null));
+  if (thisSave !== latestRulesSave) return;
   const unused = storedKeys.filter((key) => key === "rules" || (key.startsWith(RULE_PREFIX) && !(key in ruleItems)));
   if (unused.length) await chrome.storage.sync.remove(unused);
 }
@@ -158,7 +164,7 @@ export async function organizeWindow(windowId) {
 
 export async function organizeNewTab(tab) {
   if (tab.pinned || tab.groupId !== NO_GROUP) return;
-  const { autoOrganize } = await loadSettings();
+  const { autoOrganize } = await chrome.storage.sync.get("autoOrganize");
   if (!autoOrganize) return;
   const rule = findRule(tab, await loadUsableRules());
   if (rule) await moveToGroup([tab], rule, tab.windowId);
@@ -221,16 +227,15 @@ export async function mergeAllWindows(targetWindowId) {
 function pageKey(url) {
   try {
     const page = new URL(url);
-    if (!page.protocol.startsWith("http")) return "";
-    page.hash = "";
-    return page.href;
+    return page.protocol.startsWith("http") ? page.href : "";
   } catch {
     return "";
   }
 }
 
 // Keeps one copy of each page: the tab you are looking at, else a pinned one,
-// else one in a group, else the left-most one.
+// else one in a group, else the left-most one. A different #part is a different page,
+// because apps like Gmail use it for different views (#inbox, #sent).
 export async function closeDuplicateTabs(windowId) {
   const target = await chrome.windows.get(windowId);
   const windows = await chrome.windows.getAll({ windowTypes: ["normal"], populate: true });

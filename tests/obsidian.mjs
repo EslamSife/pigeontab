@@ -18,6 +18,7 @@ const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
 await p.setViewportSize({ width: 392, height: 1400 });
 await p.goto(`chrome-extension://${id}/popup.html`);
+await p.fill("#obsidian-vault", "Test_Vault"); await p.fill("#obsidian-folder", "Inbox"); await wait(900);
 const other = await ctx.newPage(); await other.goto("https://example.com/other");
 for (const u of ["https://docs.spring.io/a1", "https://docs.spring.io/b2"]) { const t = await ctx.newPage(); await t.goto(u); }
 await sw.evaluate(async () => {
@@ -44,7 +45,7 @@ check("group tabs closed", (await sw.evaluate(async () => (await chrome.tabs.que
 check("link opened on a tab outside the group", launches.length === 1 && launches[0].tabId === otherTabId, JSON.stringify(launches.map((l) => l.tabId)) + " other=" + otherTabId);
 writeFileSync(OUT + "uri.txt", launches[0]?.url ?? "");
 const params = new URL(launches[0].url.replace("obsidian://new", "https://x/new")).searchParams;
-check("vault and file in link", params.get("vault") === "Sife_Notes" && /^00_Inbox\/tabs-delete-me-test-\d{4}-\d{2}-\d{2}-\d{4}$/.test(params.get("file")), params.get("file"));
+check("vault and file in link", params.get("vault") === "Test_Vault" && /^Inbox\/tabs-delete-me-test-\d{4}-\d{2}-\d{2}-\d{6}$/.test(params.get("file")), params.get("file"));
 check("note has the tab title, long dash replaced", params.get("content").includes("[Spring Boot - Guide \\[part 1\\]](https://docs.spring.io/a1)"), params.get("content"));
 
 await p.click("#status-action"); await wait(1500);

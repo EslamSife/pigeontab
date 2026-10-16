@@ -31,7 +31,7 @@ await sw.evaluate(async () => {
   await chrome.tabs.update(w2.tabs[0].id, { pinned: true });
   await chrome.tabs.create({ windowId: w2.id, url: "https://example.net/c", active: false });
   const w3 = await chrome.windows.create({ url: "https://example.net/c", focused: false });
-  await chrome.tabs.create({ windowId: w3.id, url: "https://www.bbc.com/news#top", active: false });
+  await chrome.tabs.create({ windowId: w3.id, url: "https://www.bbc.com/news", active: false });
   await sleep(800);
 });
 await p.bringToFront();
@@ -41,10 +41,13 @@ await p.click("#dedupe"); await wait(600);
 const status = (await p.textContent("#status-text")).trim();
 const after = await state();
 console.log("AFTER:\n  " + after.join("\n  "));
-check("message", status === "Closed 5 duplicate tabs.", `"${status}"`);
+check("message", status === "Closed 4 duplicate tabs.", `"${status}"`);
 check("undo shown", (await p.textContent("#status-action")) === "Undo");
 const flat = after.join(" , ");
-check("pinned github copy kept, others closed", flat.includes("github.com/a*") && !/github\.com\/a( |#|$)/.test(flat.replace("github.com/a*", "")), flat);
+const entries = after.flatMap((w) => w.split(" , "));
+check("pinned github copy kept, others closed", JSON.stringify(entries.filter((e) => /^github\.com\/a\*?$/.test(e))) === '["github.com/a*"]', flat);
+// Apps like Gmail use the #part for different views (#inbox, #sent), so it counts as a different page.
+check("page with a different #part kept", entries.includes("github.com/a#readme"), flat);
 check("query string page kept (different page)", flat.includes("github.com/a?tab=issues"));
 check("grouped bbc copy kept, in News", (flat.match(/bbc\.com/g) || []).length === 1 && flat.includes("bbc.com/news[News]"));
 check("one example.net left", (flat.match(/example\.net/g) || []).length === 1);

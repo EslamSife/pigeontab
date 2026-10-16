@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "browser": "playwright install chromium",
-    "test": "mkdir -p out && node main.mjs && node dedupe.mjs && node fixes.mjs && node obsidian.mjs && node fixes-3-4.mjs && node title.mjs && node merge-groups.mjs",
+    "test": "mkdir -p out && node main.mjs && node dedupe.mjs && node fixes.mjs && node obsidian.mjs && node fixes-3-4.mjs && node title.mjs && node merge-groups.mjs && node fixes-3-8.mjs",
     "screens": "mkdir -p out && node screens.mjs"
   },
   "dependencies": {
