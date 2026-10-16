@@ -28,3 +28,8 @@ export function check(name, ok, extra = "") {
   console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`);
   if (!ok) process.exitCode = 1;
 }
+
+// The popup marks itself busy while an action runs. Slow machines need this, not a fixed wait.
+export function idle(page) {
+  return page.waitForFunction(() => document.body.getAttribute("aria-busy") !== "true");
+}

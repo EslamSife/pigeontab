@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -24,25 +24,25 @@ await p.goto(`chrome-extension://${id}/popup.html`);
 await wait(300);
 
 // 5 organize with nothing
-await p.click("#organize"); await wait(300);
+await p.click("#organize"); await idle(p); await wait(300);
 check("5 nothing to do message", (await status()) === "Everything is already in place.", `"${await status()}"`);
 check("5 no undo when nothing changed", !(await undoVisible()));
 check("summary shown", /tabs? open in 1 window/.test(await p.textContent("#summary")), await p.textContent("#summary"));
 
 // 5 + 4 organize with counts and unmatched list
 for (const u of ["https://github.com/1", "https://gitlab.com/2", "https://www.bbc.com/n", "https://example.com/e", "https://example.com/f"]) await open(u);
-await p.bringToFront(); await p.click("#organize"); await wait(400);
+await p.bringToFront(); await p.click("#organize"); await idle(p); await wait(400);
 check("5 counts message", (await status()) === "Grouped 2 tabs into 1 group.", `"${await status()}"`);
 check("3 undo after organize", await undoVisible());
 const unmatchedItems = await p.$$eval("#unmatched-list li span", (els) => els.map((e) => e.textContent));
 check("4 unmatched list", JSON.stringify(unmatchedItems) === JSON.stringify(["example.com (2)", "bbc.com (1)"]), JSON.stringify(unmatchedItems) + " | " + await p.textContent("#unmatched-title"));
 
 // 3 undo organize
-await p.click("#status-action"); await wait(500);
+await p.click("#status-action"); await idle(p); await wait(500);
 check("3 undo organize restores", (await groups()) === "", `"${await groups()}" ${await status()}`);
 
 // 4 add site to existing rule from list
-await p.click("#organize"); await wait(400);
+await p.click("#organize"); await idle(p); await wait(400);
 await p.selectOption('#unmatched-list select[aria-label="Add bbc.com to a rule"]', { label: "Learning" });
 await wait(800);
 check("4 add site to rule groups it", (await groups()).includes("Learning:green(1)"), await groups());
@@ -75,15 +75,15 @@ await p.selectOption('[data-id="work"] .color', "red"); await wait(900);
 check("2 recolor updates open group", (await groups()).includes("Job:red(2)"), await groups());
 
 // 6 reorder
-await p.click('[data-id="ai"] .up'); await wait(300);
+await p.click('[data-id="ai"] .up'); await idle(p); await wait(300);
 const order = (await storedRules()).map((r) => r.id).slice(0, 2);
 check("6 move up saved", JSON.stringify(order) === '["ai","work"]', JSON.stringify(order));
 check("6 top up-button disabled", await p.isDisabled('[data-id="ai"] .up'));
 
 // 3 delete rule + undo
-await p.click('[data-id="social"] .delete'); await wait(300);
+await p.click('[data-id="social"] .delete'); await idle(p); await wait(300);
 check("3 delete shows undo", (await undoVisible()) && (await status()).startsWith('Deleted rule "Social"'));
-await p.click("#status-action"); await wait(400);
+await p.click("#status-action"); await idle(p); await wait(400);
 const idsAfter = (await storedRules()).map((r) => r.id);
 check("3 deleted rule restored in place", idsAfter.indexOf("social") === 3, JSON.stringify(idsAfter.slice(0, 5)));
 
@@ -95,9 +95,9 @@ await sw.evaluate(async () => {
 });
 await p.bringToFront();
 const beforeUngroup = await groups();
-await p.click("#ungroup"); await wait(400);
+await p.click("#ungroup"); await idle(p); await wait(400);
 check("3 ungroup message", (await status()).startsWith("Removed 3 groups"), `"${await status()}" before: ${beforeUngroup}`);
-await p.click("#status-action"); await wait(700);
+await p.click("#status-action"); await idle(p); await wait(700);
 check("3 undo ungroup restores all groups", (await groups()) === beforeUngroup, `${await groups()}`);
 
 // 3 merge + undo
@@ -110,11 +110,11 @@ await sw.evaluate(async () => {
 });
 await p.bringToFront();
 const beforeMerge = await windowsState();
-await p.click("#merge"); await wait(800);
+await p.click("#merge"); await idle(p); await wait(800);
 check("3 merge message", (await status()).startsWith("Merged 1 window into this one."), `"${await status()}"`);
 const afterMerge = await windowsState();
 check("merge leaves 1 window", afterMerge.length === 1, JSON.stringify(afterMerge));
-await p.click("#status-action"); await wait(1200);
+await p.click("#status-action"); await idle(p); await wait(1200);
 const afterUndo = await windowsState();
 check("3 undo merge restores windows", JSON.stringify(afterUndo.map((w) => w.split(",").sort().join()).sort()) === JSON.stringify(beforeMerge.map((w) => w.split(",").sort().join()).sort()),
   "\n   before: " + JSON.stringify(beforeMerge) + "\n   after:  " + JSON.stringify(afterUndo));
@@ -122,11 +122,11 @@ check("3 undo merge restores windows", JSON.stringify(afterUndo.map((w) => w.spl
 // 8 errors stay, try again
 await p.bringToFront();
 await p.evaluate(() => { window.__real = chrome.runtime.sendMessage; chrome.runtime.sendMessage = async () => ({ error: "Tabs cannot be edited right now" }); });
-await p.click("#organize"); await wait(5000);
+await p.click("#organize"); await idle(p); await wait(5000);
 check("8 error still visible after 5s", (await status()).startsWith("Could not finish"), `"${await status()}"`);
 check("8 try again + close shown", (await p.textContent("#status-action")) === "Try again" && (await p.isVisible("#status-close")));
 await p.evaluate(() => { chrome.runtime.sendMessage = window.__real; });
-await p.click("#status-action"); await wait(400);
+await p.click("#status-action"); await idle(p); await wait(400);
 check("8 try again works", !(await status()).startsWith("Could not"), `"${await status()}"`);
 
 // 9 labels and sizes
@@ -138,12 +138,12 @@ check("9 every field has a label", a11y.unlabeled === 0, JSON.stringify(a11y));
 check("rule buttons at least 24px", a11y.small === 0);
 
 // auto mode still works
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 await open("https://stackoverflow.com/q"); await wait(800);
 check("auto mode", (await windowsState()).join().includes("stackoverflow.com[Learning]"));
 
 check("no page errors", errors.length === 0, errors.join(" | "));
 await p.bringToFront(); await p.evaluate(() => scrollTo(0, 0));
-await p.click("#organize"); await wait(400);
+await p.click("#organize"); await idle(p); await wait(400);
 await p.screenshot({ path: OUT + "main.png", fullPage: true });
 await ctx.close();

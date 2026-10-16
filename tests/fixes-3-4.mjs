@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 const ctx = await launch();
 // Every page finishes loading on the same 1.5 second tick, so pages opened together load together.
 await ctx.route(/^https?:/, async (r) => {
@@ -61,7 +61,7 @@ await sw.evaluate(() => chrome.storage.sync.remove("obsidianVault"));
 
 // 7 Pages that load together go into one group.
 p = await openPopup();
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 // The race depends on timing, so it runs 3 rounds of 8 tabs. The old code failed most rounds.
 const rounds = [];
 for (let round = 0; round < 3; round++) {
@@ -78,7 +78,7 @@ for (let round = 0; round < 3; round++) {
 }
 check("7 eight GitHub tabs loading together make one Work group (3 rounds)", rounds.every((r) => r === '["Work"]'), rounds.join(" "));
 await p.bringToFront();
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 
 // 8 An action that changes nothing keeps the Undo of the action before it.
 await sw.evaluate(async () => {
@@ -87,15 +87,15 @@ await sw.evaluate(async () => {
 });
 await wait(2000);
 await p.bringToFront();
-await p.click("#dedupe"); await wait(600);
+await p.click("#dedupe"); await idle(p); await wait(600);
 check("8 dedupe closed a tab", (await p.textContent("#status-text")).includes("Closed 1 duplicate tab"));
-await p.click("#organize"); await wait(600);
+await p.click("#organize"); await idle(p); await wait(600);
 check("8 organize changed nothing", (await p.textContent("#status-text")).includes("already in place"));
 const label = await sw.evaluate(async () => (await chrome.storage.session.get("undo")).undo?.label);
 check("8 undo record is still Close duplicates", label === "Close duplicates", String(label));
 await p.reload(); await wait(500);
 check("8 reopened popup offers Close duplicates undo", (await p.textContent("#status-text")).includes("Close duplicates"));
-await p.click("#status-action"); await wait(2500);
+await p.click("#status-action"); await idle(p); await wait(2500);
 const copies = await sw.evaluate(async () => (await chrome.tabs.query({ url: "https://example.org/a" })).length);
 check("8 undo brings the closed duplicate back", copies === 2, String(copies));
 await closeTestTabs(); await wait(300);
@@ -114,10 +114,10 @@ await sw.evaluate(async () => {
 });
 await wait(2000);
 await p.bringToFront();
-await p.click("#organize"); await wait(600);
+await p.click("#organize"); await idle(p); await wait(600);
 check("9 organize grouped the GitHub tab", (await p.textContent("#status-text")).includes("Grouped 1 tab"));
 await sw.evaluate(({ groupId }) => chrome.tabGroups.update(groupId, { collapsed: true }), other);
-await p.click("#status-action"); await wait(1000);
+await p.click("#status-action"); await idle(p); await wait(1000);
 const after = await sw.evaluate(async ({ windowId, groupId }) => {
   const groups = await chrome.tabGroups.query({ windowId });
   const gh = (await chrome.tabs.query({ url: "https://github.com/u" }))[0];

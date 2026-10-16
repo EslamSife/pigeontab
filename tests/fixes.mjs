@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -8,18 +8,18 @@ p.on("pageerror", (e) => errors.push(e.message));
 await p.goto(`chrome-extension://${id}/popup.html`);
 
 // 2 auto mode + undo close duplicates
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 for (let i = 0; i < 2; i++) { const t = await ctx.newPage(); await t.goto("https://www.youtube.com/watch"); }
 await wait(800);
 const yt = () => sw.evaluate(async () => (await chrome.tabs.query({ url: "*://*.youtube.com/*" })).map((t) => (t.groupId === -1 ? "ungrouped" : "grouped")));
 await sw.evaluate(async () => { const ts = await chrome.tabs.query({ url: "*://*.youtube.com/*" }); await chrome.tabs.ungroup(ts.map((t) => t.id)); });
-await p.bringToFront(); await p.click("#dedupe"); await wait(500);
-await p.click("#status-action"); await wait(4000);
+await p.bringToFront(); await p.click("#dedupe"); await idle(p); await wait(500);
+await p.click("#status-action"); await idle(p); await wait(4000);
 const ytAfter = await yt();
 check("2 undo with auto mode keeps tabs ungrouped", JSON.stringify(ytAfter) === '["ungrouped","ungrouped"]', JSON.stringify(ytAfter));
 const t3 = await ctx.newPage(); await t3.goto("https://www.youtube.com/other"); await wait(800);
 check("2 auto mode still groups new pages", (await yt()).filter((s) => s === "grouped").length === 1, JSON.stringify(await yt()));
-await p.bringToFront(); await p.click("#auto"); await wait(300);
+await p.bringToFront(); await p.click("#auto"); await idle(p); await wait(300);
 
 // 3 last focused normal window
 const lf = await sw.evaluate(async () => {
@@ -39,19 +39,19 @@ await sw.evaluate(async () => {
   const { undo } = await chrome.storage.session.get("undo");
   globalThis.__before = undo?.at ?? 0;
 });
-await p.bringToFront(); await p.click("#organize"); await wait(500);
+await p.bringToFront(); await p.click("#organize"); await idle(p); await wait(500);
 const saved = await sw.evaluate(async () => (await chrome.storage.session.get("undo")).undo);
 check("4 undo saved with label", saved?.label === "Organize tabs" && !!saved.snapshot, saved?.label);
 await p.reload(); await wait(500);
 check("5 reopened popup offers undo", (await p.textContent("#status-text")) === "Last action: Organize tabs." && (await p.textContent("#status-action")) === "Undo", await p.textContent("#status-text"));
-await p.click("#status-action"); await wait(700);
+await p.click("#status-action"); await idle(p); await wait(700);
 const groupsAfterUndo = await sw.evaluate(async () => (await chrome.tabGroups.query({})).map((g) => g.title));
 check("5 that undo works", !groupsAfterUndo.includes("Work"), JSON.stringify(groupsAfterUndo));
 
 // 6 picking a deleted rule from the list
 const t4 = await ctx.newPage(); await t4.goto("https://bbc.com/n");
-await p.bringToFront(); await p.click("#organize"); await wait(500);
-await p.click('[data-id="shopping"] .delete'); await wait(300);
+await p.bringToFront(); await p.click("#organize"); await idle(p); await wait(500);
+await p.click('[data-id="shopping"] .delete'); await idle(p); await wait(300);
 const hasShopping = await p.$$eval('#unmatched-list select[aria-label="Add bbc.com to a rule"] option', (os) => os.some((o) => o.value === "shopping"));
 await p.selectOption('#unmatched-list select[aria-label="Add bbc.com to a rule"]', "shopping");
 await wait(400);
@@ -62,8 +62,8 @@ await sw.evaluate(async () => { for (let w = 0; w < 3; w++) { const win = await 
 await wait(500);
 await p.bringToFront();
 const busy = await p.evaluate(() => { document.getElementById("merge").click(); return [...document.querySelectorAll("[data-action]")].every((b) => b.disabled) && document.body.getAttribute("aria-busy") === "true"; });
-await wait(2500);
-const idle = await p.evaluate(() => [...document.querySelectorAll("[data-action]")].every((b) => !b.disabled));
-check("8 buttons disabled while working, enabled after", busy && idle, `${busy} ${idle} | ${await p.textContent("#status-text")}`);
+await idle(p);
+const enabled = await p.evaluate(() => [...document.querySelectorAll("[data-action]")].every((b) => !b.disabled));
+check("8 buttons disabled while working, enabled after", busy && enabled, `${busy} ${enabled} | ${await p.textContent("#status-text")}`);
 check("no page errors", errors.length === 0, errors.join(" | "));
 await ctx.close();

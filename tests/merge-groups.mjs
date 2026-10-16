@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -56,7 +56,7 @@ await build([
   { win: "w3", title: "YouTube", urls: ["https://www.youtube.com/music4"], collapsed: true },
 ]);
 const before = await state();
-await p.bringToFront(); await p.click("#merge"); await wait(1500);
+await p.bringToFront(); await p.click("#merge"); await idle(p); await wait(1500);
 const merged = await state();
 check("1 merge leaves one window", merged.windows === 1, JSON.stringify(merged));
 check("1 no tab lost", merged.tabs === before.tabs, `${before.tabs} -> ${merged.tabs}`);
@@ -65,7 +65,7 @@ check("1 one Learning group", merged.groups.filter((g) => g === "Learning").leng
 check("1 groups with no name are not joined", merged.groups.filter((g) => g === "(no name)").length === 2, JSON.stringify(merged.groups));
 
 // 2 Undo puts the three windows and their groups back.
-await p.click("#status-action"); await wait(2000);
+await p.click("#status-action"); await idle(p); await wait(2000);
 const undone = await state();
 check("2 undo brings back 3 windows", undone.windows === 3, JSON.stringify(undone));
 check("2 undo brings back 3 YouTube groups", undone.groups.filter((g) => g === "YouTube").length === 3, JSON.stringify(undone.groups));
@@ -80,7 +80,7 @@ await sw.evaluate(async () => {
 // 3 Close group: tabs leave the group before they close, so Chrome does not keep the group.
 await build([{ win: "main", title: "Zeta", urls: ["https://example.com/z1", "https://example.com/z2"] }]);
 await p.reload(); await wait(500);
-await p.click(".close-group"); await p.click(".just-close"); await wait(800);
+await p.click(".close-group"); await p.click(".just-close"); await idle(p); await wait(800);
 // Control: tabs closed while still in a group are listed under its name, so the check above can see the difference.
 await build([{ win: "main", title: "Control", urls: ["https://example.com/c1"] }]);
 await sw.evaluate(async () => { const t = await chrome.tabs.query({ url: "https://example.com/c1" }); await chrome.tabs.remove(t.map((x) => x.id)); });
@@ -88,7 +88,7 @@ await wait(500);
 check("3 control: Chrome lists tabs closed inside a group", (await closedWithGroup("Control")) > 0);
 check("3 closed tabs are not listed under the group name", (await closedWithGroup("Zeta")) === 0);
 await p.bringToFront(); await p.reload(); await wait(500);
-await p.click("#status-action"); await wait(1500);
+await p.click("#status-action"); await idle(p); await wait(1500);
 const back = await state();
 check("3 undo brings the Zeta group back", back.groups.includes("Zeta"), JSON.stringify(back.groups));
 
@@ -97,11 +97,11 @@ await build([
   { win: "main", title: "Keep", urls: ["https://example.com/dup"] },
   { win: "main", title: "Solo", urls: ["https://example.com/dup"] },
 ]);
-await p.bringToFront(); await p.click("#dedupe"); await wait(800);
+await p.bringToFront(); await p.click("#dedupe"); await idle(p); await wait(800);
 const deduped = await state();
 check("4 Solo group gone, Keep group stays", deduped.groups.includes("Keep") && !deduped.groups.includes("Solo"), JSON.stringify(deduped.groups));
 check("4 closed duplicate is not listed under Solo", (await closedWithGroup("Solo")) === 0);
-await p.bringToFront(); await p.click("#status-action"); await wait(1500);
+await p.bringToFront(); await p.click("#status-action"); await idle(p); await wait(1500);
 check("4 undo brings the Solo group back", (await state()).groups.includes("Solo"));
 
 // 5 Same-name groups already in this window are joined too, even with no other window.
@@ -120,14 +120,14 @@ const firstYouTube = await sw.evaluate(async () => {
   const [first] = await chrome.tabs.query({ url: "https://www.youtube.com/s1" });
   return groups.find((g) => g.id === first.groupId).id;
 });
-await p.bringToFront(); await p.click("#merge"); await wait(1000);
+await p.bringToFront(); await p.click("#merge"); await idle(p); await wait(1000);
 const status = await p.textContent("#status-text");
 check("5 message says the group was joined", status.includes("No other windows to merge.") && status.includes("Joined 1 group with the same name") && !status.includes("already in place"), status);
 const one = await state();
 check("5 one YouTube group with all 3 tabs", one.groups.filter((g) => g === "YouTube").length === 1 && one.youtubeTabs === 3, JSON.stringify(one));
 check("5 joined into the left-most YouTube group", await sw.evaluate(async (id) => (await chrome.tabGroups.query({ title: "YouTube" }))[0]?.id === id, firstYouTube));
 check("5 groups with no name stay apart", one.groups.filter((g) => g === "(no name)").length === 2, JSON.stringify(one.groups));
-await p.click("#status-action"); await wait(1500);
+await p.click("#status-action"); await idle(p); await wait(1500);
 const two = await state();
 check("5 undo brings back two YouTube groups", two.groups.filter((g) => g === "YouTube").length === 2 && two.youtubeTabs === 3, JSON.stringify(two));
 

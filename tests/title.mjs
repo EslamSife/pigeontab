@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 const ctx = await launch();
 // Each page's title comes from its "t" query value.
 await ctx.route(/^https?:/, (r) => {
@@ -41,10 +41,10 @@ await p.fill('[data-id="work"] .keywords', (await p.inputValue('[data-id="work"]
 await p.fill('[data-id="social"] .keywords', "facebook, linkedin");
 await wait(900);
 await open(Object.values(PAGES));
-await p.click("#organize"); await wait(600);
+await p.click("#organize"); await idle(p); await wait(600);
 let where = await placement();
 check("2 title is ignored while the checkbox is off", where.spring === "-" && where.arabic === "-", JSON.stringify(where));
-await p.click("#status-action"); await wait(800);
+await p.click("#status-action"); await idle(p); await wait(800);
 
 await p.check('[data-id="work"] .title-check');
 await p.check('[data-id="social"] .title-check');
@@ -54,7 +54,7 @@ check("3 checkbox is saved", JSON.stringify(saved) === '["work","social"]', JSON
 await p.reload(); await wait(400);
 check("3 checkbox still on after reopen", await p.isChecked('[data-id="work"] .title-check'));
 
-await p.click("#organize"); await wait(600);
+await p.click("#organize"); await idle(p); await wait(600);
 where = await placement();
 check("4 whole title word matches (Spring Boot guide -> Work)", where.spring === "Work", JSON.stringify(where));
 check("4 part of a word does not match (Springfield)", where.springfield === "-", JSON.stringify(where));
@@ -64,11 +64,11 @@ const unmatched = await p.textContent("#unmatched-list");
 check("4 title-matched tab is not listed under No rule", !unmatched.includes("example.org (3)"), unmatched);
 await closePages(); await wait(300);
 
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 await open([PAGES.spring]);
 await wait(800);
 check("5 auto-group uses the title too", (await placement()).spring === "Work", JSON.stringify(await placement()));
-await p.click("#auto"); await wait(300);
+await p.click("#auto"); await idle(p); await wait(300);
 
 await p.setViewportSize({ width: 392, height: 900 });
 await p.locator('[data-id="work"]').screenshot({ path: OUT + "title.png" });

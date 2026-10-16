@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
 import { writeFileSync } from "node:fs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html; charset=utf-8", body: `<title>Spring Boot — Guide [part ${r.request().url().slice(-1)}]</title>hi` }));
@@ -37,7 +37,7 @@ check("cancel goes back", await p.isHidden(".confirm") && await p.evaluate(() =>
 await p.screenshot({ path: OUT + "groups.png" });
 await p.click('[aria-label="Close group Delete Me Test"]');
 await p.screenshot({ path: OUT + "confirm.png", clip: { x: 0, y: 0, width: 392, height: 420 } });
-await p.click(".save-close"); await wait(800);
+await p.click(".save-close"); await idle(p); await wait(800);
 const launches = await sw.evaluate(() => globalThis.__launches);
 const otherTabId = await sw.evaluate(async () => (await chrome.tabs.query({ url: "https://example.com/other" }))[0]?.id);
 check("message", (await p.textContent("#status-text")).startsWith('Closed "Delete Me Test" and sent 2 tabs to Obsidian.'), await p.textContent("#status-text"));
@@ -48,14 +48,14 @@ const params = new URL(launches[0].url.replace("obsidian://new", "https://x/new"
 check("vault and file in link", params.get("vault") === "Test_Vault" && /^Inbox\/tabs-delete-me-test-\d{4}-\d{2}-\d{2}-\d{6}$/.test(params.get("file")), params.get("file"));
 check("note has the tab title, long dash replaced", params.get("content").includes("[Spring Boot - Guide \\[part 1\\]](https://docs.spring.io/a1)"), params.get("content"));
 
-await p.click("#status-action"); await wait(1500);
+await p.click("#status-action"); await idle(p); await wait(1500);
 const back = await sw.evaluate(async () => {
   const gs = await chrome.tabGroups.query({ title: "Delete Me Test" });
   return gs.length ? `${gs[0].color} ${(await chrome.tabs.query({ groupId: gs[0].id })).length}` : "none";
 });
 check("undo brings the group back", back === "cyan 2", back);
 
-await p.click('[aria-label="Close group Delete Me Test"]'); await p.click(".just-close"); await wait(600);
+await p.click('[aria-label="Close group Delete Me Test"]'); await p.click(".just-close"); await idle(p); await wait(600);
 check("close without saving sends nothing", (await sw.evaluate(() => globalThis.__launches.length)) === 1 && (await p.textContent("#status-text")).startsWith('Closed "Delete Me Test" (2 tabs)'), await p.textContent("#status-text"));
 
 // whole window is one group: a new tab must be made to ask the question

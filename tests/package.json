@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "browser": "playwright install chromium",
-    "test": "node main.mjs && node dedupe.mjs && node fixes.mjs && node obsidian.mjs && node fixes-3-4.mjs && node title.mjs && node merge-groups.mjs && node fixes-3-8.mjs",
+    "test": "node run-all.mjs",
     "screens": "node screens.mjs",
     "pack": "cd .. && mkdir -p dist && rm -f dist/tab-organizer.zip && zip -r dist/tab-organizer.zip manifest.json *.js popup.html popup.css icons LICENSE"
   },
