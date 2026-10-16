@@ -1,6 +1,6 @@
 # Tab Organizer: Progress
 
-Last update: 2026-10-16. Current version: 3.7.0.
+Last update: 2026-10-16. Current version: 3.8.0.
 
 Tab Organizer is a Chrome extension (a small add-on program that runs inside Chrome). It groups your tabs by your own rules, merges windows, closes duplicate tabs, and can save a group of tabs as a note in your Obsidian vault. Every action can be undone.
 
@@ -19,6 +19,9 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 | `organizer.js` | The main logic: rules, matching sites to rules, organize, merge, ungroup, close duplicates, close group. |
 | `snapshot.js` | Undo support. It records where every tab was, and puts tabs back or opens closed tabs again. |
 | `obsidian.js` | Builds the note for a closed group and sends it to Obsidian. |
+| `icons/` | The extension icon in 16, 48 and 128 pixels. |
+| `README.md`, `LICENSE` | The public description and the MIT license. |
+| `.github/workflows/test.yml` | GitHub Actions: runs the tests and builds the ZIP on every push. |
 | `popup.html`, `popup.css`, `popup.js` | The window you see when you click the extension icon. |
 | `tests/` | The Playwright test suites. See "Tests" below for how to run them. |
 
@@ -32,9 +35,9 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 
 **Merge windows.** Moves the tabs from all windows into the current one, then groups them. Whole groups move together, and pinned tabs stay pinned. Then groups with the same name are joined into the left-most one, so you never get two "YouTube" groups. This also joins same-name groups that were already in this window, and it works when you have only one window. Groups with no name are never joined. "Organize now" does not do this, because it leaves the groups you made by hand alone.
 
-**Close duplicates.** Keeps one copy of each page across all windows. It keeps, in this order: the tab you are looking at, then a pinned copy, then a grouped copy, then the first copy. A page with a different `#part` at the end of the address counts as the same page.
+**Close duplicates.** Keeps one copy of each page across all windows. It keeps, in this order: the tab you are looking at, then a pinned copy, then a grouped copy, then the first copy. A page with a different `#part` at the end of the address is a different page (since 3.8.0), because apps like Gmail use it for different views (`#inbox`, `#sent`).
 
-**Close a group, and save it to Obsidian.** Under "Groups in this window", each group has a "Close..." button. It asks: "Save to Obsidian and close", "Close without saving", or "Cancel". The note goes to `Sife_Notes/00_Inbox` as `tabs-<group>-<date>-<time>.md`, with your vault frontmatter, one link per tab, and `## Related` at the end. You can change the vault and folder in the popup, under "Obsidian".
+**Close a group, and save it to Obsidian.** Under "Groups in this window", each group has a "Close..." button. It asks: "Save to Obsidian and close", "Close without saving", or "Cancel". The note goes to the vault and folder you set in the popup, under "Obsidian", as `tabs-<group>-<date>-<time with seconds>.md`, with frontmatter, one link per tab, and `## Related` at the end. With no vault name set, it shows an error and closes nothing.
 
 **Auto-group new pages.** When on, a new page that is not in any group goes to its rule group after it loads. Tabs already in a group are never moved.
 
@@ -55,6 +58,7 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 9. **Title matching (version 3.5.0).** You asked whether the tool groups by title or content. It used only the site name. We added an optional per-rule checkbox to also match the tab title. Page content is not used: it would need permission to read every page you open.
 10. **Duplicate groups (version 3.6.0).** You saw two groups with the same name after Merge windows, and many copies of the same group in Chrome's group search. Fixed both causes we could find (see the 3.6.0 table).
 11. **Join same-name groups in one window (version 3.7.0).** Merge in 3.6.0 only joined groups coming from other windows. Now it also joins same-name groups that were already in the current window.
+12. **Open source readiness (version 3.8.0).** A full review checked if the project can be published. The report is in the vault: `00_Inbox/tab-organizer-open-source-readiness-review.md`. This step fixed its findings: MIT license, README, icons, a ZIP build, GitHub Actions, tests that run headless on any machine and fail on a failed check, and the bugs in the 3.8.0 table. The git history now uses your personal email (set for this repo only).
 
 ## Bugs found and fixed
 
@@ -93,6 +97,18 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 | After Merge windows, the same window had two groups with the same name, for example two "YouTube" groups. | Merge moved each group as it was. Only groups named like a rule were joined later by Organize. Groups you made by hand were left as two. | Merge joins a group into a group with the same name in this window. |
 | Chrome's saved groups list could fill with copies of the same group. | Chrome keeps a saved copy of a group when its tabs are closed, but deletes the group when its tabs are ungrouped (Google's Chrome help page says this). Close group, Close duplicates and Organize closed tabs or moved them out while they were still in a group. Each Undo then made a new group with the same name. | Tabs now leave their group (ungroup) before they close or move to another group, so Chrome deletes the group instead of keeping a copy. |
 
+## Bugs fixed in 3.8.0
+
+| Problem | Cause | Fix |
+|---|---|---|
+| A rule edit typed just before the popup closed was lost. | The save first read the storage and only then wrote. The popup was gone before the write. | The rules are written first, then old items are cleaned. |
+| Two rule saves close together could delete a rule (for example Delete, then Undo at once). | The older save removed rule items it did not know, after the newer save had written them. | Only the newest save removes old rule items. |
+| Close duplicates closed Gmail `#sent` when `#inbox` was open. | The `#part` of the address was ignored. | The `#part` now counts. |
+| The defaults were your own vault (`Sife_Notes`, `00_Inbox`). | Personal settings in the code. | Both are empty by default. |
+| Two groups closed in the same minute could get the same note file name (always for non-Latin group names). | The file name had only hours and minutes. | Seconds are added. |
+| The tests ran only on your Mac, in a visible window, and never failed `npm test`. | Each file had a fixed path to one Chrome build, and a failed check only printed FAIL. | One shared `tests/setup.mjs`: headless Chromium from Playwright, exit code 1 on any FAIL. |
+| A shortcut with no normal window left an error with no handler. | `getLastFocused` ran outside the error handler. | It runs inside the job now. |
+
 ## Known limits (things to know)
 
 **Partial words no longer match.** For example, "stack" will not match stackoverflow.com. Use "stackoverflow" or "stackoverflow.com". This is the price of fixing the wrong matches above, and I think it is worth it.
@@ -129,19 +145,20 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 
 The tests use Playwright (a tool that drives a real Chrome browser by code) with "Chrome for Testing" and the extension loaded. They are in `tests/`.
 
-To run them: `cd tests`, then `npm install` once, then `npm test`. A Chrome window opens and closes several times; do not touch it. `npm run screens` saves popup pictures (light and dark, popup size and full tab) to `tests/out/`.
+To run them: `cd tests`, then `npm install` and `npm run browser` once, then `npm test`. They run headless (no window); set `HEADED=1` to watch. A failed check makes `npm test` exit with code 1. `npm run screens` saves popup pictures to `tests/out/`. `npm run pack` builds `dist/tab-organizer.zip` with only the extension files.
 
 | Test suite | File | Checks | Result |
 |---|---|---|---|
 | Main features (organize, rules, merge, undo, UX fixes) | `main.mjs` | 34 | All pass |
-| Close duplicates | `dedupe.mjs` | 10 | All pass |
+| Close duplicates | `dedupe.mjs` | 11 | All pass |
 | Bug fixes from the first analyze pass | `fixes.mjs` | 9 | All pass |
-| Close group and Obsidian | `obsidian.mjs` | 13 | All pass |
+| Close group and Obsidian | `obsidian.mjs` | 14 | All pass |
 | Bug fixes from the second analyze pass (3.4.0) | `fixes-3-4.mjs` | 19 | All pass |
 | Title matching (3.5.0) | `title.mjs` | 11 | All pass |
 | Merge same-name groups, ungroup before close (3.6.0, 3.7.0) | `merge-groups.mjs` | 20 | All pass |
+| Open source fixes (3.8.0) | `fixes-3-8.mjs` | 6 | All pass |
 
-The 3.4.0 tests were also run against the old 3.3.0 code to prove they catch the bugs: the storage, Undo, other-window and duplicate group checks all failed there. The duplicate group bug depends on timing, so its test runs 3 rounds of 8 tabs. The "site match wins" title check was also proven: it fails when that rule is removed from the code.
+The 3.4.0 tests were also run against the old 3.3.0 code to prove they catch the bugs: the storage, Undo, other-window and duplicate group checks all failed there. The 3.8.0 tests were also run against the 3.7.0 code first: all 5 new checks and the new `#part` check failed there. The duplicate group bug depends on timing, so its test runs 3 rounds of 8 tabs. The "site match wins" title check was also proven: it fails when that rule is removed from the code.
 
 The Obsidian link was also tested with the real Obsidian app (in 3.3.0): it created the note in `00_Inbox`, and the vault note checker (`check_note.py`) found no problems.
 
@@ -149,9 +166,11 @@ Not tested: Chrome's own "Open Obsidian?" question, because the test tool cannot
 
 ## What you need to do
 
-1. Reload the extension at `chrome://extensions` (version 3.7.0).
-2. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups).
-3. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
-4. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.
-5. Try "Close..." on a group, then "Save to Obsidian and close", and check what Chrome's question looks like.
-6. If the popup still looks broken in your own Chrome (not in the tests), send a screenshot.
+1. Reload the extension at `chrome://extensions` (version 3.8.0).
+2. Check the vault name and folder under "Obsidian" in the popup. If they are empty, type `Sife_Notes` and `00_Inbox` once.
+3. Before you publish: confirm your Integrant contract does not claim this project, then create the GitHub repository and push.
+4. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups).
+5. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
+6. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.
+7. Try "Close..." on a group, then "Save to Obsidian and close", and check what Chrome's question looks like.
+8. If the popup still looks broken in your own Chrome (not in the tests), send a screenshot.

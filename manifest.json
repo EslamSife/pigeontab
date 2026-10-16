@@ -4,12 +4,14 @@
   "version": "3.8.0",
   "description": "Groups your tabs by your own rules, like Work, Learning and Shopping.",
   "permissions": ["tabs", "tabGroups", "storage"],
+  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "action": {
     "default_title": "Tab Organizer",
+    "default_icon": { "16": "icons/icon-16.png", "48": "icons/icon-48.png" },
     "default_popup": "popup.html"
   },
   "commands": {
