@@ -1,11 +1,11 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
 const errors = [];
 const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
-await p.goto(`chrome-extension://${id}/popup.html`); await wait(400);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p); await wait(400);
 
 // Makes a group in a window: [windowId or "new", title, urls, collapsed]
 const build = (specs) => sw.evaluate(async (specs) => {
@@ -79,7 +79,7 @@ await sw.evaluate(async () => {
 
 // 3 Close group: tabs leave the group before they close, so Chrome does not keep the group.
 await build([{ win: "main", title: "Zeta", urls: ["https://example.com/z1", "https://example.com/z2"] }]);
-await p.reload(); await wait(500);
+await p.reload(); await ready(p); await wait(500);
 await p.click(".close-group"); await p.click(".just-close"); await idle(p); await wait(800);
 // Control: tabs closed while still in a group are listed under its name, so the check above can see the difference.
 await build([{ win: "main", title: "Control", urls: ["https://example.com/c1"] }]);
@@ -87,7 +87,7 @@ await sw.evaluate(async () => { const t = await chrome.tabs.query({ url: "https:
 await wait(500);
 check("3 control: Chrome lists tabs closed inside a group", (await closedWithGroup("Control")) > 0);
 check("3 closed tabs are not listed under the group name", (await closedWithGroup("Zeta")) === 0);
-await p.bringToFront(); await p.reload(); await wait(500);
+await p.bringToFront(); await p.reload(); await ready(p); await wait(500);
 await p.click("#status-action"); await idle(p); await wait(1500);
 const back = await state();
 check("3 undo brings the Zeta group back", back.groups.includes("Zeta"), JSON.stringify(back.groups));

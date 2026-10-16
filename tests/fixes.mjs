@@ -1,14 +1,14 @@
-import { OUT, check, extensionWorker, idle, launch, until, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, setAuto, until, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
 const errors = [];
 const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
-await p.goto(`chrome-extension://${id}/popup.html`);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p);
 
 // 2 auto mode + undo close duplicates
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, true);
 for (let i = 0; i < 2; i++) { const t = await ctx.newPage(); await t.goto("https://www.youtube.com/watch"); }
 await wait(800);
 const yt = () => sw.evaluate(async () => (await chrome.tabs.query({ url: "*://*.youtube.com/*" })).map((t) => (t.groupId === -1 ? "ungrouped" : "grouped")));
@@ -19,7 +19,7 @@ const ytAfter = await yt();
 check("2 undo with auto mode keeps tabs ungrouped", JSON.stringify(ytAfter) === '["ungrouped","ungrouped"]', JSON.stringify(ytAfter));
 const t3 = await ctx.newPage(); await t3.goto("https://www.youtube.com/other"); await wait(800);
 check("2 auto mode still groups new pages", (await yt()).filter((s) => s === "grouped").length === 1, JSON.stringify(await yt()));
-await p.bringToFront(); await p.click("#auto"); await idle(p); await wait(300);
+await p.bringToFront(); await setAuto(p, false);
 
 // 3 last focused normal window
 const lf = await sw.evaluate(async () => {
@@ -34,7 +34,7 @@ check("3 shortcut picks a normal window", lf.endsWith("-> normal"), lf);
 // 4 undo saved before the action, 5 offered on reopen
 await p.bringToFront();
 const storedAuto = () => sw.evaluate(async () => (await chrome.storage.sync.get("autoOrganize")).autoOrganize);
-check("auto mode saved as off", await until(async () => (await storedAuto()) === false), String(await storedAuto()));
+check("auto mode saved as off", await until(async () => (await storedAuto()) === false), JSON.stringify({ stored: await storedAuto(), checkbox: await p.isChecked("#auto"), status: await p.textContent("#status-text") }));
 for (const u of ["https://github.com/1", "https://gitlab.com/2"]) { const t = await ctx.newPage(); await t.goto(u); }
 const workTabs = () => sw.evaluate(async () => (await chrome.tabs.query({ url: ["*://github.com/*", "*://gitlab.com/*"] })).map((t) => t.groupId));
 await wait(800);
@@ -47,7 +47,7 @@ await sw.evaluate(async () => {
 await p.bringToFront(); await p.click("#organize"); await idle(p); await wait(500);
 const saved = await sw.evaluate(async () => (await chrome.storage.session.get("undo")).undo);
 check("4 undo saved with label", saved?.label === "Organize tabs" && !!saved.snapshot, saved?.label);
-await p.reload(); await wait(500);
+await p.reload(); await ready(p); await wait(500);
 check("5 reopened popup offers undo", (await p.textContent("#status-text")) === "Last action: Organize tabs." && (await p.textContent("#status-action")) === "Undo", await p.textContent("#status-text"));
 await p.click("#status-action"); await idle(p); await wait(700);
 const groupsAfterUndo = await sw.evaluate(async () => (await chrome.tabGroups.query({})).map((g) => g.title));

@@ -108,6 +108,8 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 | Two groups closed in the same minute could get the same note file name (always for non-Latin group names). | The file name had only hours and minutes. | Seconds are added. |
 | The tests ran only on your Mac, in a visible window, and never failed `npm test`. | Each file had a fixed path to one Chrome build, and a failed check only printed FAIL. | One shared `tests/setup.mjs`: headless Chromium from Playwright, exit code 1 on any FAIL. |
 | A shortcut with no normal window left an error with no handler. | `getLastFocused` ran outside the error handler. | It runs inside the job now. |
+| A click or typing in the first moments after the popup opened could be undone by the popup itself: the auto-group box showed off while it was saved as on, or a typed vault name was replaced by the old empty one. Found by the Windows tests. | The popup attached its handlers first and loaded the saved settings after. The late load overwrote what you had just changed. | The settings load first, then the handlers are attached. |
+| The tests failed on Windows and macOS (slower machines). | They waited a fixed time after each click, and a moving status message made one click miss. | They wait until the popup is ready and no longer busy, and set the auto-group box without a mouse click. |
 
 ## Known limits (things to know)
 
@@ -145,18 +147,20 @@ Tab Organizer is a Chrome extension (a small add-on program that runs inside Chr
 
 The tests use Playwright (a tool that drives a real Chrome browser by code) with "Chrome for Testing" and the extension loaded. They are in `tests/`.
 
-To run them: `cd tests`, then `npm install` and `npm run browser` once, then `npm test`. They run headless (no window); set `HEADED=1` to watch. A failed check makes `npm test` exit with code 1. `npm run screens` saves popup pictures to `tests/out/`. `npm run pack` builds `dist/tab-organizer.zip` with only the extension files.
+GitHub Actions runs them on Windows, macOS and Linux on every push (https://github.com/EslamSife/tab-organizer/actions).
+
+To run them: `cd tests`, then `npm install` and `npm run browser` once, then `npm test`. Every suite runs, then the failed suites are listed. They run headless (no window); set `HEADED=1` to watch. A failed check makes `npm test` exit with code 1. `npm run screens` saves popup pictures to `tests/out/`. `npm run pack` builds `dist/tab-organizer.zip` with only the extension files.
 
 | Test suite | File | Checks | Result |
 |---|---|---|---|
 | Main features (organize, rules, merge, undo, UX fixes) | `main.mjs` | 34 | All pass |
 | Close duplicates | `dedupe.mjs` | 11 | All pass |
-| Bug fixes from the first analyze pass | `fixes.mjs` | 9 | All pass |
-| Close group and Obsidian | `obsidian.mjs` | 14 | All pass |
+| Bug fixes from the first analyze pass | `fixes.mjs` | 11 | All pass |
+| Close group and Obsidian | `obsidian.mjs` | 15 | All pass |
 | Bug fixes from the second analyze pass (3.4.0) | `fixes-3-4.mjs` | 19 | All pass |
 | Title matching (3.5.0) | `title.mjs` | 11 | All pass |
 | Merge same-name groups, ungroup before close (3.6.0, 3.7.0) | `merge-groups.mjs` | 20 | All pass |
-| Open source fixes (3.8.0) | `fixes-3-8.mjs` | 6 | All pass |
+| Open source fixes (3.8.0) | `fixes-3-8.mjs` | 7 | All pass |
 
 The 3.4.0 tests were also run against the old 3.3.0 code to prove they catch the bugs: the storage, Undo, other-window and duplicate group checks all failed there. The 3.8.0 tests were also run against the 3.7.0 code first: all 5 new checks and the new `#part` check failed there. The duplicate group bug depends on timing, so its test runs 3 rounds of 8 tabs. The "site match wins" title check was also proven: it fails when that rule is removed from the code.
 
@@ -168,7 +172,7 @@ Not tested: Chrome's own "Open Obsidian?" question, because the test tool cannot
 
 1. Reload the extension at `chrome://extensions` (version 3.8.0).
 2. Check the vault name and folder under "Obsidian" in the popup. If they are empty, type `Sife_Notes` and `00_Inbox` once.
-3. Before you publish: confirm your Integrant contract does not claim this project, then create the GitHub repository and push.
+3. The code is public at https://github.com/EslamSife/tab-organizer. Still check that your Integrant contract does not claim this project.
 4. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups).
 5. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
 6. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.

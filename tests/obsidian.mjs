@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, until, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, until, wait } from "./setup.mjs";
 import { writeFileSync } from "node:fs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html; charset=utf-8", body: `<title>Spring Boot — Guide [part ${r.request().url().slice(-1)}]</title>hi` }));
@@ -17,7 +17,7 @@ await sw.evaluate(() => {
 const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
 await p.setViewportSize({ width: 392, height: 1400 });
-await p.goto(`chrome-extension://${id}/popup.html`);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p);
 await p.fill("#obsidian-vault", "Test_Vault"); await p.fill("#obsidian-folder", "Inbox"); await wait(900);
 const storedVault = () => sw.evaluate(async () => (await chrome.storage.sync.get("obsidianVault")).obsidianVault);
 check("vault name saved", await until(async () => (await storedVault()) === "Test_Vault"), String(await storedVault()));
@@ -29,7 +29,7 @@ await sw.evaluate(async () => {
   await chrome.tabGroups.update(g, { title: "Delete Me Test", color: "cyan" });
   await chrome.tabs.update(ts[0].id, { active: true });
 });
-await p.reload(); await wait(500);
+await p.reload(); await ready(p); await wait(500);
 check("group listed", (await p.textContent("#groups-list")).includes("Delete Me Test (2)"));
 await p.click('[aria-label="Close group Delete Me Test"]');
 check("confirm names group and count", (await p.textContent(".confirm-text")) === 'Close "Delete Me Test" and its 2 tabs?');
@@ -75,7 +75,7 @@ const solo = await sw.evaluate(async () => {
   return g.id;
 });
 const p2 = await ctx.newPage(); // popup page opened in the Solo window is not possible, so call the action directly
-await p2.goto(`chrome-extension://${id}/popup.html`);
+await p2.goto(`chrome-extension://${id}/popup.html`); await ready(p2);
 const soloResult = await p2.evaluate((groupId) => chrome.runtime.sendMessage({ action: "closeGroup", groupId, save: true }), solo);
 await wait(500);
 const soloState = await sw.evaluate(async () => {

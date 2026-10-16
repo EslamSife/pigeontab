@@ -16,7 +16,7 @@ A Chrome extension that groups your tabs by your own rules, like Work, Learning 
 
 ## Install
 
-The extension is not in the Chrome Web Store yet. To install it from this folder:
+Tab Organizer works in Chrome on Windows, macOS and Linux. It is not in the Chrome Web Store yet. To install it from this folder:
 
 1. Download or clone this repository.
 2. Open `chrome://extensions` and turn on **Developer mode** (top right).
@@ -61,7 +61,7 @@ npm test          # set HEADED=1 to watch the browser
 npm run pack      # builds dist/tab-organizer.zip with only the extension files
 ```
 
-A failed check prints `FAIL` and makes `npm test` exit with code 1. GitHub Actions runs the same tests on every push (`.github/workflows/test.yml`).
+A failed check prints `FAIL` and makes `npm test` exit with code 1. GitHub Actions runs the same tests on Windows, macOS and Linux on every push (`.github/workflows/test.yml`).
 
 ## License
 

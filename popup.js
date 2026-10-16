@@ -351,6 +351,17 @@ function deleteRule(row) {
 }
 
 
+// Settings load before any handler is attached, so a late load cannot overwrite what you just changed.
+const settings = await loadSettings();
+autoToggle.checked = settings.autoOrganize;
+vaultInput.value = settings.obsidianVault;
+folderInput.value = settings.obsidianFolder;
+for (const rule of settings.rules) {
+  validateRow(addRuleRow(rule));
+  if (rule.name) groupLooks.set(rule.id, { name: rule.name, color: rule.color });
+}
+updateMoveButtons();
+
 rulesList.addEventListener("input", (event) => {
   const row = event.target.closest(".rule");
   if (event.target.matches(".color")) row.dataset.color = event.target.value;
@@ -415,15 +426,6 @@ async function showShortcuts() {
   if (text) document.getElementById("shortcuts").textContent = text;
 }
 
-const settings = await loadSettings();
-autoToggle.checked = settings.autoOrganize;
-vaultInput.value = settings.obsidianVault;
-folderInput.value = settings.obsidianFolder;
-for (const rule of settings.rules) {
-  validateRow(addRuleRow(rule));
-  if (rule.name) groupLooks.set(rule.id, { name: rule.name, color: rule.color });
-}
-updateMoveButtons();
 showShortcuts();
 showSummary();
 showGroups();

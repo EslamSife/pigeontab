@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, setAuto, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -20,7 +20,7 @@ const undoVisible = async () => (await p.isVisible("#status-action")) && (await 
 const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
 await p.setViewportSize({ width: 392, height: 1100 });
-await p.goto(`chrome-extension://${id}/popup.html`);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p);
 await wait(300);
 
 // 5 organize with nothing
@@ -59,7 +59,7 @@ check("1 name-missing message shown", (await p.textContent(`${lastRow} .rule-err
 check("1 focus on name", await p.evaluate(() => document.activeElement.matches(".rule:last-child .name")));
 
 // 1 + 7 nameless rule survives reopen; typing saves without leaving field
-await p.reload(); await wait(400);
+await p.reload(); await ready(p); await wait(400);
 check("1 nameless rule kept after reopen", (await p.inputValue(`${lastRow} .keywords`)) === "example.com", `${await p.locator(".rule").count()} rules`);
 await p.click(`${lastRow} .name`); await p.keyboard.type("Testing");
 await wait(900);
@@ -138,7 +138,7 @@ check("9 every field has a label", a11y.unlabeled === 0, JSON.stringify(a11y));
 check("rule buttons at least 24px", a11y.small === 0);
 
 // auto mode still works
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, true);
 await open("https://stackoverflow.com/q"); await wait(800);
 check("auto mode", (await windowsState()).join().includes("stackoverflow.com[Learning]"));
 

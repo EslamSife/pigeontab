@@ -41,3 +41,18 @@ export async function until(condition, timeout = 5000) {
   }
   return false;
 }
+
+// Sets the auto-group box without a mouse click, so a moving layout cannot make the click miss.
+export async function setAuto(page, on) {
+  await ready(page);
+  await page.evaluate((on) => {
+    const box = document.getElementById("auto");
+    if (box.checked !== on) box.click();
+  }, on);
+  await wait(300);
+}
+
+// The popup draws the rules right after it loads settings and attaches its handlers.
+export function ready(page) {
+  return page.waitForSelector("#rules .rule");
+}

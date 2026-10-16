@@ -1,4 +1,4 @@
-import { check, extensionWorker, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, launch, ready, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -6,7 +6,7 @@ const errors = [];
 const openPopup = async () => {
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`chrome-extension://${id}/popup.html`);
+  await page.goto(`chrome-extension://${id}/popup.html`); await ready(page);
   await wait(300);
   return page;
 };
@@ -47,6 +47,21 @@ const names = await p.evaluate(async () => {
   ];
 });
 check("4 same-minute notes get different file names", names[0] !== names[1], JSON.stringify(names));
+
+// 5 A click while the popup still loads its settings must not leave the box and the saved value different.
+const slow = await ctx.newPage();
+await slow.addInitScript(() => {
+  const get = chrome.storage.sync.get.bind(chrome.storage.sync);
+  chrome.storage.sync.get = (keys) => {
+    const answer = get(keys);
+    return new Promise((resolve) => setTimeout(() => resolve(answer), 800));
+  };
+});
+await slow.goto(`chrome-extension://${id}/popup.html`);
+await slow.evaluate(() => document.getElementById("auto").click());
+await ready(slow); await wait(300);
+const auto = { checkbox: await slow.isChecked("#auto"), stored: Boolean(await sw.evaluate(async () => (await chrome.storage.sync.get("autoOrganize")).autoOrganize)) };
+check("5 early click: box shows the saved value", auto.checkbox === auto.stored, JSON.stringify(auto));
 
 check("no page errors", errors.length === 0, errors.join(" | "));
 await ctx.close();

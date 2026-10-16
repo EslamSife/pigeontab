@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, launch, OUT, ready, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -8,7 +8,7 @@ const p = await ctx.newPage();
 for (const scheme of ["light", "dark"]) {
   await p.emulateMedia({ colorScheme: scheme });
   await p.setViewportSize({ width: 392, height: 600 });
-  await p.goto(`chrome-extension://${id}/popup.html`);
+  await p.goto(`chrome-extension://${id}/popup.html`); await ready(p);
   await p.waitForTimeout(500);
   await p.screenshot({ path: `${OUT}popup-${scheme}.png`, fullPage: true });
   await p.setViewportSize({ width: 1100, height: 700 });

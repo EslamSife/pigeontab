@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, setAuto, wait } from "./setup.mjs";
 const ctx = await launch();
 // Every page finishes loading on the same 1.5 second tick, so pages opened together load together.
 await ctx.route(/^https?:/, async (r) => {
@@ -8,7 +8,7 @@ await ctx.route(/^https?:/, async (r) => {
 const { sw, id } = await extensionWorker(ctx);
 const errors = [];
 const popupUrl = `chrome-extension://${id}/popup.html`;
-const openPopup = async () => { const p = await ctx.newPage(); p.on("pageerror", (e) => errors.push(e.message)); await p.goto(popupUrl); await wait(400); return p; };
+const openPopup = async () => { const p = await ctx.newPage(); p.on("pageerror", (e) => errors.push(e.message)); await p.goto(popupUrl); await ready(p); return p; };
 const groupTitles = () => sw.evaluate(async () => (await chrome.tabGroups.query({})).map((g) => g.title).sort());
 const closeTestTabs = () => sw.evaluate(async () => {
   const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
@@ -36,7 +36,7 @@ const total = await sw.evaluate(() => chrome.storage.sync.getBytesInUse(null));
 const back = await p.evaluate(async () => (await (await import("./organizer.js")).loadSettings()).rules.map((r) => r.keywords.length));
 check("2 rules larger than 8 KB together are saved", total > 8192 && JSON.stringify(back) === "[220,220]", `${total} bytes, ${JSON.stringify(back)}`);
 await sw.evaluate(() => chrome.storage.sync.clear());
-await p.reload(); await wait(400);
+await p.reload(); await ready(p); await wait(400);
 
 // 3 x.com is in the default Social rule.
 check("3 x.com in Social", (await p.inputValue('[data-id="social"] .keywords')).includes("x.com"));
@@ -61,7 +61,7 @@ await sw.evaluate(() => chrome.storage.sync.remove("obsidianVault"));
 
 // 7 Pages that load together go into one group.
 p = await openPopup();
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, true);
 // The race depends on timing, so it runs 3 rounds of 8 tabs. The old code failed most rounds.
 const rounds = [];
 for (let round = 0; round < 3; round++) {
@@ -78,7 +78,7 @@ for (let round = 0; round < 3; round++) {
 }
 check("7 eight GitHub tabs loading together make one Work group (3 rounds)", rounds.every((r) => r === '["Work"]'), rounds.join(" "));
 await p.bringToFront();
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, false);
 
 // 8 An action that changes nothing keeps the Undo of the action before it.
 await sw.evaluate(async () => {
@@ -93,7 +93,7 @@ await p.click("#organize"); await idle(p); await wait(600);
 check("8 organize changed nothing", (await p.textContent("#status-text")).includes("already in place"));
 const label = await sw.evaluate(async () => (await chrome.storage.session.get("undo")).undo?.label);
 check("8 undo record is still Close duplicates", label === "Close duplicates", String(label));
-await p.reload(); await wait(500);
+await p.reload(); await ready(p); await wait(500);
 check("8 reopened popup offers Close duplicates undo", (await p.textContent("#status-text")).includes("Close duplicates"));
 await p.click("#status-action"); await idle(p); await wait(2500);
 const copies = await sw.evaluate(async () => (await chrome.tabs.query({ url: "https://example.org/a" })).length);

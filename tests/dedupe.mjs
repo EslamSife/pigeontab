@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -13,7 +13,7 @@ const state = () => sw.evaluate(async () => {
 const canon = (s) => JSON.stringify(s.map((w) => w.split(" , ").sort().join(" , ")).sort());
 
 const p = await ctx.newPage();
-await p.goto(`chrome-extension://${id}/popup.html`);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p);
 await sw.evaluate(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const [popupTab] = await chrome.tabs.query({ url: "chrome-extension://*/popup.html" });

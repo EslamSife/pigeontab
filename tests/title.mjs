@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { check, extensionWorker, idle, launch, OUT, ready, setAuto, wait } from "./setup.mjs";
 const ctx = await launch();
 // Each page's title comes from its "t" query value.
 await ctx.route(/^https?:/, (r) => {
@@ -9,7 +9,7 @@ const { sw, id } = await extensionWorker(ctx);
 const errors = [];
 const p = await ctx.newPage();
 p.on("pageerror", (e) => errors.push(e.message));
-await p.goto(`chrome-extension://${id}/popup.html`); await wait(400);
+await p.goto(`chrome-extension://${id}/popup.html`); await ready(p); await wait(400);
 
 const PAGES = {
   spring: "https://example.org/a?t=Spring Boot guide",
@@ -51,7 +51,7 @@ await p.check('[data-id="social"] .title-check');
 await wait(900);
 const saved = await p.evaluate(async () => (await (await import("./organizer.js")).loadSettings()).rules.filter((r) => r.matchTitle).map((r) => r.id));
 check("3 checkbox is saved", JSON.stringify(saved) === '["work","social"]', JSON.stringify(saved));
-await p.reload(); await wait(400);
+await p.reload(); await ready(p); await wait(400);
 check("3 checkbox still on after reopen", await p.isChecked('[data-id="work"] .title-check'));
 
 await p.click("#organize"); await idle(p); await wait(600);
@@ -64,11 +64,11 @@ const unmatched = await p.textContent("#unmatched-list");
 check("4 title-matched tab is not listed under No rule", !unmatched.includes("example.org (3)"), unmatched);
 await closePages(); await wait(300);
 
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, true);
 await open([PAGES.spring]);
 await wait(800);
 check("5 auto-group uses the title too", (await placement()).spring === "Work", JSON.stringify(await placement()));
-await p.click("#auto"); await idle(p); await wait(300);
+await setAuto(p, false);
 
 await p.setViewportSize({ width: 392, height: 900 });
 await p.locator('[data-id="work"]').screenshot({ path: OUT + "title.png" });
