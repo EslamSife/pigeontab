@@ -46,7 +46,8 @@ await p.reload(); await wait(500);
 check("5 reopened popup offers undo", (await p.textContent("#status-text")) === "Last action: Organize tabs." && (await p.textContent("#status-action")) === "Undo", await p.textContent("#status-text"));
 await p.click("#status-action"); await idle(p); await wait(700);
 const groupsAfterUndo = await sw.evaluate(async () => (await chrome.tabGroups.query({})).map((g) => g.title));
-check("5 that undo works", !groupsAfterUndo.includes("Work"), JSON.stringify(groupsAfterUndo));
+const tabsNow = await sw.evaluate(async () => (await chrome.tabs.query({})).map((t) => `${t.windowId}:${new URL(t.url || t.pendingUrl || "about:blank").hostname}:${t.groupId}`));
+check("5 that undo works", !groupsAfterUndo.includes("Work"), JSON.stringify({ now: groupsAfterUndo, before: saved.snapshot.groups.map((g) => g.title), windowsBefore: saved.snapshot.windows.map((w) => w.id), tabsNow }));
 
 // 6 picking a deleted rule from the list
 const t4 = await ctx.newPage(); await t4.goto("https://bbc.com/n");
