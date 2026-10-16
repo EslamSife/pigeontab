@@ -36,6 +36,8 @@ Tab Organizer reads only the address and title of your tabs. It never reads page
 
 Permissions: `tabs` (read tab addresses and titles), `tabGroups` (make and change groups), `storage` (keep your rules).
 
+Full privacy policy: [PRIVACY.md](PRIVACY.md).
+
 ## Known limits
 
 - **Undo is only for the last action,** and it is lost when Chrome restarts.

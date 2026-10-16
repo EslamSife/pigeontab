@@ -6,7 +6,8 @@
     "browser": "playwright install chromium",
     "test": "node run-all.mjs",
     "screens": "node screens.mjs",
-    "pack": "cd .. && mkdir -p dist && rm -f dist/tab-organizer.zip && zip -r dist/tab-organizer.zip manifest.json *.js popup.html popup.css icons LICENSE"
+    "pack": "cd .. && mkdir -p dist && rm -f dist/tab-organizer.zip && zip -r dist/tab-organizer.zip manifest.json *.js popup.html popup.css icons LICENSE",
+    "store": "node store.mjs"
   },
   "dependencies": {
     "playwright": "^1.64.1"
