@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, until, wait } from "./setup.mjs";
 import { writeFileSync } from "node:fs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html; charset=utf-8", body: `<title>Spring Boot — Guide [part ${r.request().url().slice(-1)}]</title>hi` }));
@@ -19,6 +19,8 @@ p.on("pageerror", (e) => errors.push(e.message));
 await p.setViewportSize({ width: 392, height: 1400 });
 await p.goto(`chrome-extension://${id}/popup.html`);
 await p.fill("#obsidian-vault", "Test_Vault"); await p.fill("#obsidian-folder", "Inbox"); await wait(900);
+const storedVault = () => sw.evaluate(async () => (await chrome.storage.sync.get("obsidianVault")).obsidianVault);
+check("vault name saved", await until(async () => (await storedVault()) === "Test_Vault"), String(await storedVault()));
 const other = await ctx.newPage(); await other.goto("https://example.com/other");
 for (const u of ["https://docs.spring.io/a1", "https://docs.spring.io/b2"]) { const t = await ctx.newPage(); await t.goto(u); }
 await sw.evaluate(async () => {

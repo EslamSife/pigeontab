@@ -1,4 +1,4 @@
-import { OUT, check, extensionWorker, idle, launch, wait } from "./setup.mjs";
+import { OUT, check, extensionWorker, idle, launch, until, wait } from "./setup.mjs";
 const ctx = await launch();
 await ctx.route(/^https?:/, (r) => r.fulfill({ contentType: "text/html", body: "<title>t</title>hi" }));
 const { sw, id } = await extensionWorker(ctx);
@@ -33,7 +33,12 @@ check("3 shortcut picks a normal window", lf.endsWith("-> normal"), lf);
 
 // 4 undo saved before the action, 5 offered on reopen
 await p.bringToFront();
+const storedAuto = () => sw.evaluate(async () => (await chrome.storage.sync.get("autoOrganize")).autoOrganize);
+check("auto mode saved as off", await until(async () => (await storedAuto()) === false), String(await storedAuto()));
 for (const u of ["https://github.com/1", "https://gitlab.com/2"]) { const t = await ctx.newPage(); await t.goto(u); }
+const workTabs = () => sw.evaluate(async () => (await chrome.tabs.query({ url: ["*://github.com/*", "*://gitlab.com/*"] })).map((t) => t.groupId));
+await wait(800);
+check("github and gitlab start ungrouped", (await workTabs()).every((g) => g === -1), JSON.stringify({ groups: await workTabs(), auto: await storedAuto(), checkbox: await p.isChecked("#auto") }));
 await sw.evaluate(async () => {
   const [popupTab] = await chrome.tabs.query({ url: "chrome-extension://*/popup.html" });
   const { undo } = await chrome.storage.session.get("undo");

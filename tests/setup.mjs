@@ -33,3 +33,11 @@ export function check(name, ok, extra = "") {
 export function idle(page) {
   return page.waitForFunction(() => document.body.getAttribute("aria-busy") !== "true");
 }
+
+// Polls until the condition is true, for state the page does not announce (like a saved setting).
+export async function until(condition, timeout = 5000) {
+  for (const end = Date.now() + timeout; Date.now() < end; await wait(100)) {
+    if (await condition()) return true;
+  }
+  return false;
+}
