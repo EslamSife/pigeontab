@@ -175,7 +175,7 @@ Not tested: Chrome's own "Open Obsidian?" question, because the test tool cannot
 2. Check the vault name and folder under "Obsidian" in the popup. If they are empty, type `Sife_Notes` and `00_Inbox` once.
 3. The code is public at https://github.com/EslamSife/tab-organizer. Still check that your Integrant contract does not claim this project.
 4. Chrome Web Store: submitted on 2026-10-17. Wait for Google's review email. If it is rejected, fix the reason it gives and submit again.
-5. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups).
+5. Delete the extra copies in Chrome's saved groups by hand (Chrome menu, Tab groups). Then run the saved groups check once in your real Chrome: note how many "Work" entries the Tab groups menu shows, then in the popup press Organize, close the Work group, press Undo, press Organize again, restart Chrome, and count again. No new copy means the 3.6.0 fix works. (On 2026-10-17 an automated test restarted the test Chrome 4 times with auto-group on: the open groups stayed Work, Learning, Shopping with no copies. The test Chrome cannot show saved groups, so this manual check is still needed.)
 6. To use title matching: add title words to a rule (for example "spring") and tick "Also match the tab title".
 7. If you edited your rules before: add `aws.amazon` to your Work rule and `x.com` to your Social rule.
 8. Try "Close..." on a group, then "Save to Obsidian and close", and check what Chrome's question looks like.
